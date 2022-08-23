@@ -24,7 +24,7 @@ DEFINES :=
 LINKER_FLAGS := 
 
 %.o: %.c
-	$(CC) $(CC_FLAGS) $(INCLUDE) -c $< -o $@
+	$(CC) $(CC_FLAGS) $(INCLUDE) $(DEFINES) -c $< -o $@
 
 $(OUTPUT): $(OBJ)
 	$(CC) $^ $(LINKER_FLAGS) -o $@
