@@ -1,0 +1,10 @@
+# Ignore tags
+tags
+
+# Ignore compilation output.
+*.out
+*.elf
+*.o
+
+# Ignore dependency files.
+*.d
