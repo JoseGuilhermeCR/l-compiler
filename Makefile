@@ -1,33 +1,32 @@
-OUTPUT := l-compiler.elf
+OUTPUT := l-compiler
 
-SRC := src/main.c \
-       src/file_view.c
+SRC := src/lexer.cc  
 
-OBJ := $(patsubst %.c,%.o,$(SRC))
-DEP := $(patsubst %.c,%.d,$(SRC))
+OBJ := $(patsubst %.cc,%.o,$(SRC))
+DEP := $(patsubst %.cc,%.d,$(SRC))
 
-CC := gcc
+CXX := g++
 
-CC_FLAGS := -Wall -Wextra -Wshadow
-CC_FLAGS += -std=gnu11
+CXX_FLAGS := -Wall -Wextra -Wshadow
+CXX_FLAGS += -std=c++20
 
 ifdef DEBUG_SYMBOLS
-CC_FLAGS += -ggdb3
+CXX_FLAGS += -ggdb3
 endif
 
 ifdef OPTIMIZATION_LEVEL
-CC_FLAGS += -O$(OPTIMIZATION_LEVEL)
+CXX_FLAGS += -O$(OPTIMIZATION_LEVEL)
 endif
 
 INCLUDE := -Iinclude
 DEFINES :=
 LINKER_FLAGS := 
 
-%.o: %.c
-	$(CC) $(CC_FLAGS) $(INCLUDE) $(DEFINES) -c $< -o $@
+%.o: %.cc
+	$(CXX) $(CXX_FLAGS) $(INCLUDE) $(DEFINES) -c $< -o $@
 
 $(OUTPUT): $(OBJ)
-	$(CC) $^ $(LINKER_FLAGS) -o $@
+	$(CXX) $^ $(LINKER_FLAGS) -o $@
 
 -include $(DEP)
 
