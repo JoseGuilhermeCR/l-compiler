@@ -5,6 +5,7 @@ tags
 *.out
 *.elf
 *.o
+l-compiler
 
 # Ignore dependency files.
 *.d
