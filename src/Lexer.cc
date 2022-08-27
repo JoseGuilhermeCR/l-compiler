@@ -2,44 +2,49 @@
 #include "SymbolTable.h"
 #include "Utils.h"
 
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cctype>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <variant>
-#include <array>
-#include <cctype>
-#include <algorithm>
-#include <optional>
-#include <cassert>
 
 constexpr char END_OF_FILE = 0x1A;
 
-enum class LexerState {
+enum class LexerState
+{
     Initial,
-    KeywordOrIdentifier, /* 1 */
-    LogicalAnd, /* 3 */
-    LogicalOr, /* 4 */
-    NotOrNotEqual, /* 5 */
-    Assignment,    /* 6 */
-    LessOrLessEqual, /* 7 */
+    KeywordOrIdentifier,   /* 1 */
+    LogicalAnd,            /* 3 */
+    LogicalOr,             /* 4 */
+    NotOrNotEqual,         /* 5 */
+    Assignment,            /* 6 */
+    LessOrLessEqual,       /* 7 */
     GreaterOrGreaterEqual, /* 8 */
-    DivisionOrComentary, /* 9 */
-    InCommentary, /* 10 */
-    LeavingCommentary, /* 11 */
+    DivisionOrComentary,   /* 9 */
+    InCommentary,          /* 10 */
+    LeavingCommentary,     /* 11 */
 };
 
 LexerError::LexerError(uint64_t line, std::string&& msg)
     : m_line(line)
     , m_msg(std::move(msg))
-{}
+{
+}
 
-LexerError LexerError::make_non_existent_lexeme_error(uint64_t line, const std::string& lexeme)
+LexerError
+LexerError::make_non_existent_lexeme_error(uint64_t line,
+                                           const std::string& lexeme)
 {
     std::string msg = "Non-existent lexeme found: " + lexeme;
     return LexerError(line, std::move(msg));
 }
 
-std::ostream& operator<<(std::ostream& out, const LexerError& error)
+std::ostream&
+operator<<(std::ostream& out, const LexerError& error)
 {
     out << error.m_line << '\n';
     out << error.m_msg;
@@ -54,7 +59,8 @@ Lexer::Lexer(const std::string& file, SymbolTable& symbol_table)
 {
 }
 
-std::variant<std::monostate, Token, LexerError> Lexer::get_next_token()
+std::variant<std::monostate, Token, LexerError>
+Lexer::get_next_token()
 {
     if (m_cursor == m_file.size())
         return std::monostate{};
@@ -147,8 +153,9 @@ std::variant<std::monostate, Token, LexerError> Lexer::get_next_token()
                     if (possible_token)
                         return *possible_token;
 
-                    /* If no keyword token could be made out of the lexeme, 
-                     * it means this is an identifier. Add it to the symbol table.
+                    /* If no keyword token could be made out of the lexeme,
+                     * it means this is an identifier. Add it to the symbol
+                     * table.
                      * */
                     m_symbol_table.insert(lexeme);
                     return Token(TokenType::Identifier, std::move(lexeme));
@@ -159,7 +166,8 @@ std::variant<std::monostate, Token, LexerError> Lexer::get_next_token()
                     return Token(TokenType::LogicalAnd);
                 } else {
                     lexeme += c;
-                    return LexerError::make_non_existent_lexeme_error(m_line, lexeme);
+                    return LexerError::make_non_existent_lexeme_error(m_line,
+                                                                      lexeme);
                 }
                 break;
             case LexerState::LogicalOr:
@@ -167,7 +175,8 @@ std::variant<std::monostate, Token, LexerError> Lexer::get_next_token()
                     return Token(TokenType::LogicalOr);
                 } else {
                     lexeme += c;
-                    return LexerError::make_non_existent_lexeme_error(m_line, lexeme);
+                    return LexerError::make_non_existent_lexeme_error(m_line,
+                                                                      lexeme);
                 }
                 break;
             case LexerState::NotOrNotEqual:
@@ -183,7 +192,8 @@ std::variant<std::monostate, Token, LexerError> Lexer::get_next_token()
                     return Token(TokenType::Assignment);
                 } else {
                     lexeme += c;
-                    return LexerError::make_non_existent_lexeme_error(m_line, lexeme);
+                    return LexerError::make_non_existent_lexeme_error(m_line,
+                                                                      lexeme);
                 }
                 break;
             case LexerState::LessOrLessEqual:
@@ -226,46 +236,22 @@ std::variant<std::monostate, Token, LexerError> Lexer::get_next_token()
     return LexerError(m_line, "Unexpected EOF");
 }
 
-bool Lexer::is_in_alphabet(char c) const
+bool
+Lexer::is_in_alphabet(char c) const
 {
     if (std::isalnum(c))
         return true;
 
     static constexpr std::array<char, 28> special = {
-        ' ',
-        '_',
-        '.',
-        ',',
-        ';',
-        ':',
-        '(',
-        ')',
-        '[',
-        ']',
-        '{',
-        '}',
-        '+',
-        '*',
-        '-',
-        '"',
-        '\'',
-        '/',
-        '|',
-        '@',
-        '&',
-        '%',
-        '!',
-        '?',
-        '>',
-        '<',
-        '=',
-        '\n'
+        ' ', '_', '.',  ',', ';', ':', '(', ')', '[', ']', '{', '}', '+', '*',
+        '-', '"', '\'', '/', '|', '@', '&', '%', '!', '?', '>', '<', '=', '\n'
     };
 
     return std::find(special.cbegin(), special.cend(), c) != special.cend();
 }
 
-std::optional<Token> Lexer::try_token_from_reserved_word(std::string_view lexeme) const
+std::optional<Token>
+Lexer::try_token_from_reserved_word(std::string_view lexeme) const
 {
     const std::string lowercase_lexeme = utils::to_lowercase(lexeme);
 
@@ -276,29 +262,19 @@ std::optional<Token> Lexer::try_token_from_reserved_word(std::string_view lexeme
         return Token(TokenConstType::Boolean, std::string(lexeme));
 
     static constexpr std::array<std::string_view, 15> keywords = {
-        "const",
-        "int",
-        "char",
-        "while",
-        "if",
-        "float",
-        "else",
-        "readln",
-        "div",
-        "string",
-        "write",
-        "writeln",
-        "mod",
-        "boolean",
+        "const",  "int", "char",   "while", "if",      "float", "else",
+        "readln", "div", "string", "write", "writeln", "mod",   "boolean",
     };
-    
-    const auto possible_keyword = std::find(keywords.cbegin(), keywords.cend(), lowercase_lexeme);
+
+    const auto possible_keyword =
+        std::find(keywords.cbegin(), keywords.cend(), lowercase_lexeme);
     if (possible_keyword != keywords.cend())
         return Token(TokenType::Keyword, std::string(*possible_keyword));
     return {};
 }
 
-static std::string read_file_from_stdin()
+static std::string
+read_file_from_stdin()
 {
     std::string file;
 
@@ -315,7 +291,8 @@ static std::string read_file_from_stdin()
     return file;
 }
 
-int main()
+int
+main()
 {
     const auto file = read_file_from_stdin();
     if (file.empty()) {
@@ -343,4 +320,3 @@ int main()
 
     return 0;
 }
-

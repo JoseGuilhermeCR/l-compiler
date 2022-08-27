@@ -2,10 +2,10 @@
 
 #include "Utils.h"
 
-SymbolTable::SymbolTable()
-{}
+SymbolTable::SymbolTable() {}
 
-void SymbolTable::insert(std::string_view lexeme)
+void
+SymbolTable::insert(std::string_view lexeme)
 {
     std::string lowercase_lexeme = utils::to_lowercase(lexeme);
     if (m_table.contains(lowercase_lexeme))

@@ -5,6 +5,7 @@
 
 namespace utils {
 
-std::string to_lowercase(std::string_view other);
+std::string
+to_lowercase(std::string_view other);
 
 }

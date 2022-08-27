@@ -6,14 +6,15 @@
 enum class TokenType;
 
 /* A symbol is created from an *identifier* Token. */
-class Symbol {
-};
+class Symbol
+{};
 
-class SymbolTable {
-    public:
-        SymbolTable();
-        void insert(std::string_view lexeme);
+class SymbolTable
+{
+  public:
+    SymbolTable();
+    void insert(std::string_view lexeme);
 
-    private:
-        std::unordered_map<std::string, Symbol> m_table;
+  private:
+    std::unordered_map<std::string, Symbol> m_table;
 };
