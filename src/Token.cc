@@ -75,6 +75,14 @@ std::string_view Token::get_lexeme_from_type() const
             return "{";
         case TokenType::ClosingCurlyBracket:
             return "}";
+        case TokenType::Less:
+            return "<";
+        case TokenType::LessEqual:
+            return "<=";
+        case TokenType::Greater:
+            return ">";
+        case TokenType::GreaterEqual:
+            return ">=";
         case TokenType::Identifier:
             break;
         case TokenType::Keyword:

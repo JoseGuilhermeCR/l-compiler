@@ -21,6 +21,8 @@ enum class LexerState {
     LogicalOr, /* 4 */
     NotOrNotEqual, /* 5 */
     Assignment,    /* 6 */
+    LessOrLessEqual, /* 7 */
+    GreaterOrGreaterEqual, /* 8 */
 };
 
 LexerError::LexerError(uint64_t line, std::string&& msg)
@@ -115,6 +117,12 @@ std::variant<std::monostate, Token, LexerError> Lexer::get_next_token()
                         return Token(TokenType::OpeningCurlyBracket);
                     case '}':
                         return Token(TokenType::ClosingCurlyBracket);
+                    case '<':
+                        state = LexerState::LessOrLessEqual;
+                        break;
+                    case '>':
+                        state = LexerState::GreaterOrGreaterEqual;
+                        break;
                 }
 
                 break;
@@ -136,10 +144,10 @@ std::variant<std::monostate, Token, LexerError> Lexer::get_next_token()
                 }
                 break;
             case LexerState::LogicalAnd:
-                lexeme += c;
                 if (c == '&') {
                     return Token(TokenType::LogicalAnd);
                 } else {
+                    lexeme += c;
                     return LexerError::make_non_existent_lexeme_error(m_line, lexeme);
                 }
                 break;
@@ -165,6 +173,22 @@ std::variant<std::monostate, Token, LexerError> Lexer::get_next_token()
                 } else {
                     lexeme += c;
                     return LexerError::make_non_existent_lexeme_error(m_line, lexeme);
+                }
+                break;
+            case LexerState::LessOrLessEqual:
+                if (c == '=') {
+                    return Token(TokenType::LessEqual);
+                } else {
+                    --m_cursor;
+                    return Token(TokenType::Less);
+                }
+                break;
+            case LexerState::GreaterOrGreaterEqual:
+                if (c == '=') {
+                    return Token(TokenType::GreaterEqual);
+                } else {
+                    --m_cursor;
+                    return Token(TokenType::Greater);
                 }
                 break;
         }

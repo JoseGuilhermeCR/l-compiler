@@ -25,6 +25,10 @@ enum class TokenType {
     ClosingSquareBracket, /* ] */
     OpeningCurlyBracket, /* { */
     ClosingCurlyBracket, /* } */
+    Less, /* < */
+    LessEqual, /* <= */
+    Greater, /* > */
+    GreaterEqual, /* >= */
 };
 
 enum class TokenConstType {
