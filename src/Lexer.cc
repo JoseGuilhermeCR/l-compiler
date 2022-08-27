@@ -29,6 +29,7 @@ enum class LexerState
     LeavingCommentary,     /* 11 */
     EnterCharConstant,     /* 14 */
     LeaveCharConstant,     /* 16 */
+    StringConstant,        /* 13 */
 };
 
 LexerError::LexerError(uint64_t line, std::string&& msg)
@@ -145,6 +146,9 @@ Lexer::get_next_token()
                     case '\'':
                         state = LexerState::EnterCharConstant;
                         break;
+                    case '"':
+                        state = LexerState::StringConstant;
+                        break;
                 }
 
                 break;
@@ -248,6 +252,14 @@ Lexer::get_next_token()
                 if (c == '\'')
                     return Token(TokenConstType::Char, std::move(lexeme));
                 else
+                    return LexerError::make_non_existent_lexeme_error(m_line,
+                                                                      lexeme);
+                break;
+            case LexerState::StringConstant:
+                lexeme += c;
+                if (c == '"')
+                    return Token(TokenConstType::String, std::move(lexeme));
+                else if (c == '\n')
                     return LexerError::make_non_existent_lexeme_error(m_line,
                                                                       lexeme);
                 break;
