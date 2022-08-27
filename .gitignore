@@ -9,3 +9,6 @@ l-compiler
 
 # Ignore dependency files.
 *.d
+
+# Ignore clangd
+compile_commands.json

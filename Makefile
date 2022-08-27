@@ -1,6 +1,9 @@
 OUTPUT := l-compiler
 
-SRC := src/lexer.cc  
+SRC := src/Lexer.cc \
+       src/SymbolTable.cc \
+       src/Token.cc \
+       src/Utils.cc
 
 OBJ := $(patsubst %.cc,%.o,$(SRC))
 DEP := $(patsubst %.cc,%.d,$(SRC))
