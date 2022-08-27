@@ -23,6 +23,9 @@ enum class LexerState {
     Assignment,    /* 6 */
     LessOrLessEqual, /* 7 */
     GreaterOrGreaterEqual, /* 8 */
+    DivisionOrComentary, /* 9 */
+    InCommentary, /* 10 */
+    LeavingCommentary, /* 11 */
 };
 
 LexerError::LexerError(uint64_t line, std::string&& msg)
@@ -70,6 +73,11 @@ std::variant<std::monostate, Token, LexerError> Lexer::get_next_token()
 
         switch (state) {
             case LexerState::Initial:
+                /* Make sure we clear the lexeme
+                 * if we've come back from another state
+                 * to Initial. */
+                lexeme.clear();
+
                 if (c == ' ' || c == '\n')
                     break;
 
@@ -122,6 +130,9 @@ std::variant<std::monostate, Token, LexerError> Lexer::get_next_token()
                         break;
                     case '>':
                         state = LexerState::GreaterOrGreaterEqual;
+                        break;
+                    case '/':
+                        state = LexerState::DivisionOrComentary;
                         break;
                 }
 
@@ -190,6 +201,24 @@ std::variant<std::monostate, Token, LexerError> Lexer::get_next_token()
                     --m_cursor;
                     return Token(TokenType::Greater);
                 }
+                break;
+            case LexerState::DivisionOrComentary:
+                if (c != '*') {
+                    --m_cursor;
+                    return Token(TokenType::Division);
+                } else {
+                    state = LexerState::InCommentary;
+                }
+                break;
+            case LexerState::InCommentary:
+                if (c == '*')
+                    state = LexerState::LeavingCommentary;
+                break;
+            case LexerState::LeavingCommentary:
+                if (c == '/')
+                    state = LexerState::Initial;
+                else if (c != '*')
+                    state = LexerState::InCommentary;
                 break;
         }
     }

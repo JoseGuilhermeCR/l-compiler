@@ -83,6 +83,8 @@ std::string_view Token::get_lexeme_from_type() const
             return ">";
         case TokenType::GreaterEqual:
             return ">=";
+        case TokenType::Division:
+            return "/";
         case TokenType::Identifier:
             break;
         case TokenType::Keyword:

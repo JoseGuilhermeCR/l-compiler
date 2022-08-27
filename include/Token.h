@@ -29,6 +29,7 @@ enum class TokenType {
     LessEqual, /* <= */
     Greater, /* > */
     GreaterEqual, /* >= */
+    Division, /* / */
 };
 
 enum class TokenConstType {
