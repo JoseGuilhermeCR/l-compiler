@@ -36,6 +36,7 @@ enum class TokenType
 enum class TokenConstType
 {
     Boolean, /* True / False */
+    Char,    /* 'a' */
 };
 
 class Token

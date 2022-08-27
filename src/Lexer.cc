@@ -27,6 +27,8 @@ enum class LexerState
     DivisionOrComentary,   /* 9 */
     InCommentary,          /* 10 */
     LeavingCommentary,     /* 11 */
+    EnterCharConstant,     /* 14 */
+    LeaveCharConstant,     /* 16 */
 };
 
 LexerError::LexerError(uint64_t line, std::string&& msg)
@@ -140,6 +142,9 @@ Lexer::get_next_token()
                     case '/':
                         state = LexerState::DivisionOrComentary;
                         break;
+                    case '\'':
+                        state = LexerState::EnterCharConstant;
+                        break;
                 }
 
                 break;
@@ -229,6 +234,22 @@ Lexer::get_next_token()
                     state = LexerState::Initial;
                 else if (c != '*')
                     state = LexerState::InCommentary;
+                break;
+            case LexerState::EnterCharConstant:
+                lexeme += c;
+                if (is_in_alphabet(c) && std::isprint(static_cast<int>(c)))
+                    state = LexerState::LeaveCharConstant;
+                else
+                    return LexerError::make_non_existent_lexeme_error(m_line,
+                                                                      lexeme);
+                break;
+            case LexerState::LeaveCharConstant:
+                lexeme += c;
+                if (c == '\'')
+                    return Token(TokenConstType::Char, std::move(lexeme));
+                else
+                    return LexerError::make_non_existent_lexeme_error(m_line,
+                                                                      lexeme);
                 break;
         }
     }
