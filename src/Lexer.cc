@@ -241,7 +241,7 @@ Lexer::get_next_token()
                 break;
             case LexerState::EnterCharConstant:
                 lexeme += c;
-                if (is_in_alphabet(c) && std::isprint(static_cast<int>(c)))
+                if (std::isprint(static_cast<int>(c)))
                     state = LexerState::LeaveCharConstant;
                 else
                     return LexerError::make_non_existent_lexeme_error(m_line,
@@ -340,7 +340,7 @@ main()
     auto maybe_token = lexer.get_next_token();
     while (std::holds_alternative<Token>(maybe_token)) {
         const auto& t = std::get<Token>(maybe_token);
-        std::cout << "Read(" << t.lexeme() << ')' << '\n';
+        std::cout << "Token(" << t.lexeme() << ')' << '\n';
         maybe_token = lexer.get_next_token();
     }
 
