@@ -300,7 +300,8 @@ Lexer::get_next_token()
                 if (std::isxdigit(static_cast<int>(c))) {
                     state = LexerState::HexadecimalChar;
                 } else {
-                    return LexerError::make_non_existent_lexeme_error(m_line, lexeme);
+                    return LexerError::make_non_existent_lexeme_error(m_line,
+                                                                      lexeme);
                 }
                 break;
             case LexerState::HexadecimalChar:
@@ -327,7 +328,8 @@ Lexer::get_next_token()
                 if (std::isdigit(static_cast<int>(c))) {
                     state = LexerState::Float;
                 } else {
-                    return LexerError::make_non_existent_lexeme_error(m_line, lexeme);
+                    return LexerError::make_non_existent_lexeme_error(m_line,
+                                                                      lexeme);
                 }
                 break;
             case LexerState::Float:

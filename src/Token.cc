@@ -101,7 +101,8 @@ Token::get_lexeme_from_type() const
     assert(0 && "Should never be reached.");
 }
 
-std::string_view Token::token_const_type_as_str() const
+std::string_view
+Token::token_const_type_as_str() const
 {
     const auto type = token_const_type();
     switch (type) {
