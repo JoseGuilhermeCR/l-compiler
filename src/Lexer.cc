@@ -99,7 +99,9 @@ Lexer::get_next_token()
                 if (std::isalpha(static_cast<int>(c)) || c == '_') {
                     state = LexerState::KeywordOrIdentifier;
                     break;
-                } else if (std::isdigit(static_cast<int>(c))) {
+                } else if (std::isdigit(static_cast<int>(c)) && c != '0') {
+                    /* 0 is not treated here, because 0 might be the start
+                     * of a hexadecimal character. */
                     state = LexerState::IntegerOrFloat;
                     break;
                 }
