@@ -38,6 +38,7 @@ enum class TokenConstType
     Boolean, /* True / False */
     Char,    /* 'a' */
     String,  /* "Hello, World" */
+    Integer, /* 0 */
 };
 
 class Token

@@ -33,6 +33,7 @@ enum class LexerState
     CharOrNumber,          /* 17 */
     EnterHexadecimalChar,  /* 18 */
     HexadecimalChar,       /* 19 */
+    IntegerOrFloat,        /* 12 */
 };
 
 LexerError::LexerError(uint64_t line, std::string&& msg)
@@ -95,8 +96,11 @@ Lexer::get_next_token()
 
                 lexeme += c;
 
-                if (std::isalpha(c) || c == '_') {
+                if (std::isalpha(static_cast<int>(c)) || c == '_') {
                     state = LexerState::KeywordOrIdentifier;
+                    break;
+                } else if (std::isdigit(static_cast<int>(c))) {
+                    state = LexerState::IntegerOrFloat;
                     break;
                 }
 
@@ -270,13 +274,15 @@ Lexer::get_next_token()
                                                                       lexeme);
                 break;
             case LexerState::CharOrNumber:
-                lexeme += c;
                 if (std::tolower(static_cast<int>(c)) == 'x') {
+                    lexeme += c;
                     state = LexerState::EnterHexadecimalChar;
                 } else if (std::isdigit(static_cast<int>(c))) {
-                    /* TODO: Go to Integer / Float constant. */
+                    lexeme += c;
+                    state = LexerState::IntegerOrFloat;
                 } else {
-                    return LexerError::make_non_existent_lexeme_error(m_line, lexeme);
+                    --m_cursor;
+                    return Token(TokenConstType::Integer, std::move(lexeme));
                 }
                 break;
             case LexerState::EnterHexadecimalChar:
@@ -293,6 +299,17 @@ Lexer::get_next_token()
                 } else {
                     --m_cursor;
                     return Token(TokenConstType::Char, std::move(lexeme));
+                }
+                break;
+            case LexerState::IntegerOrFloat:
+                if (c == '.') {
+                    lexeme += c;
+                    /* TODO: Floating point constant. */
+                } else if (std::isdigit(static_cast<int>(c))) {
+                    lexeme += c;
+                } else {
+                    --m_cursor;
+                    return Token(TokenConstType::Integer, std::move(lexeme));
                 }
                 break;
         }
