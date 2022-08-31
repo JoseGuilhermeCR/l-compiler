@@ -34,6 +34,8 @@ enum class LexerState
     EnterHexadecimalChar,  /* 18 */
     HexadecimalChar,       /* 19 */
     IntegerOrFloat,        /* 12 */
+    StartFloat,            /* 15 */
+    Float,                 /* 20 */
 };
 
 LexerError::LexerError(uint64_t line, std::string&& msg)
@@ -161,6 +163,9 @@ Lexer::get_next_token()
                     case '0':
                         state = LexerState::CharOrNumber;
                         break;
+                    case '.':
+                        state = LexerState::StartFloat;
+                        break;
                 }
 
                 break;
@@ -282,6 +287,9 @@ Lexer::get_next_token()
                 } else if (std::isdigit(static_cast<int>(c))) {
                     lexeme += c;
                     state = LexerState::IntegerOrFloat;
+                } else if (c == '.') {
+                    lexeme += c;
+                    state = LexerState::Float;
                 } else {
                     --m_cursor;
                     return Token(TokenConstType::Integer, std::move(lexeme));
@@ -306,12 +314,28 @@ Lexer::get_next_token()
             case LexerState::IntegerOrFloat:
                 if (c == '.') {
                     lexeme += c;
-                    /* TODO: Floating point constant. */
+                    state = LexerState::Float;
                 } else if (std::isdigit(static_cast<int>(c))) {
                     lexeme += c;
                 } else {
                     --m_cursor;
                     return Token(TokenConstType::Integer, std::move(lexeme));
+                }
+                break;
+            case LexerState::StartFloat:
+                lexeme += c;
+                if (std::isdigit(static_cast<int>(c))) {
+                    state = LexerState::Float;
+                } else {
+                    return LexerError::make_non_existent_lexeme_error(m_line, lexeme);
+                }
+                break;
+            case LexerState::Float:
+                if (std::isdigit(static_cast<int>(c))) {
+                    lexeme += c;
+                } else {
+                    --m_cursor;
+                    return Token(TokenConstType::Float, std::move(lexeme));
                 }
                 break;
         }

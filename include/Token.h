@@ -39,6 +39,7 @@ enum class TokenConstType
     Char,    /* 'a' */
     String,  /* "Hello, World" */
     Integer, /* 0 */
+    Float,   /* .02 2. 3.14 */
 };
 
 class Token
