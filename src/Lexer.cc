@@ -415,7 +415,15 @@ main()
     auto maybe_token = lexer.get_next_token();
     while (std::holds_alternative<Token>(maybe_token)) {
         const auto& t = std::get<Token>(maybe_token);
-        std::cout << "Token(" << t.lexeme() << ')' << '\n';
+
+        std::cout << "Token(" << t.lexeme();
+
+        if (t.type() == TokenType::Const) {
+            std::cout << ":" << t.token_const_type_as_str() << ')' << '\n';
+        } else {
+            std::cout << ')' << '\n';
+        }
+
         maybe_token = lexer.get_next_token();
     }
 

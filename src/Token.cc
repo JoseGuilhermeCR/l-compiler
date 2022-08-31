@@ -101,3 +101,20 @@ Token::get_lexeme_from_type() const
     assert(0 && "Should never be reached.");
 }
 
+std::string_view Token::token_const_type_as_str() const
+{
+    const auto type = token_const_type();
+    switch (type) {
+        case TokenConstType::Boolean:
+            return "boolean";
+        case TokenConstType::Char:
+            return "char";
+        case TokenConstType::Float:
+            return "float";
+        case TokenConstType::Integer:
+            return "integer";
+        case TokenConstType::String:
+            return "string";
+    }
+    assert(0 && "Should never be reached.");
+}

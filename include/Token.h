@@ -74,6 +74,12 @@ class Token
      * */
     TokenConstType token_const_type() const;
 
+    /*
+     * Should only be called if TokenType is Const.
+     * Returns the kind of constant stringfied. *
+     * */
+    std::string_view token_const_type_as_str() const;
+
   private:
     /**
      * Simple tokens don't need their lexeme stored.
