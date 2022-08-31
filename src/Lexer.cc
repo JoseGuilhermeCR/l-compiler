@@ -30,6 +30,9 @@ enum class LexerState
     EnterCharConstant,     /* 14 */
     LeaveCharConstant,     /* 16 */
     StringConstant,        /* 13 */
+    CharOrNumber,          /* 17 */
+    EnterHexadecimalChar,  /* 18 */
+    HexadecimalChar,       /* 19 */
 };
 
 LexerError::LexerError(uint64_t line, std::string&& msg)
@@ -149,6 +152,9 @@ Lexer::get_next_token()
                     case '"':
                         state = LexerState::StringConstant;
                         break;
+                    case '0':
+                        state = LexerState::CharOrNumber;
+                        break;
                 }
 
                 break;
@@ -262,6 +268,32 @@ Lexer::get_next_token()
                 else if (c == '\n')
                     return LexerError::make_non_existent_lexeme_error(m_line,
                                                                       lexeme);
+                break;
+            case LexerState::CharOrNumber:
+                lexeme += c;
+                if (std::tolower(static_cast<int>(c)) == 'x') {
+                    state = LexerState::EnterHexadecimalChar;
+                } else if (std::isdigit(static_cast<int>(c))) {
+                    /* TODO: Go to Integer / Float constant. */
+                } else {
+                    return LexerError::make_non_existent_lexeme_error(m_line, lexeme);
+                }
+                break;
+            case LexerState::EnterHexadecimalChar:
+                lexeme += c;
+                if (std::isxdigit(static_cast<int>(c))) {
+                    state = LexerState::HexadecimalChar;
+                } else {
+                    return LexerError::make_non_existent_lexeme_error(m_line, lexeme);
+                }
+                break;
+            case LexerState::HexadecimalChar:
+                if (std::isxdigit(static_cast<int>(c))) {
+                    lexeme += c;
+                } else {
+                    --m_cursor;
+                    return Token(TokenConstType::Char, std::move(lexeme));
+                }
                 break;
         }
     }
