@@ -1,4 +1,4 @@
-char h := 0xASD;
+char h := 0;
 CHAR H := 0X32;
 
 char caractere := '0', oioi = 'c' ;
