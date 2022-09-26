@@ -305,13 +305,10 @@ Lexer::get_next_token()
                 }
                 break;
             case LexerState::HexadecimalChar:
-                if (std::isxdigit(static_cast<int>(c))) {
-                    lexeme += c;
-                } else {
-                    --m_cursor;
-                    return Token(TokenConstType::Char, std::move(lexeme));
-                }
-                break;
+                lexeme += c;
+                if (std::isxdigit(static_cast<int>(c)))
+		    return Token(TokenConstType::Char, std::move(lexeme));
+                return LexerError::make_non_existent_lexeme_error(m_line, lexeme);
             case LexerState::IntegerOrFloat:
                 if (c == '.') {
                     lexeme += c;
