@@ -32,6 +32,8 @@ class Lexer
 
     std::variant<std::monostate, Token, LexerError> get_next_token();
 
+    uint64_t line_number() const { return m_line; }
+
   private:
     bool is_in_alphabet(char c) const;
     std::optional<Token> try_token_from_reserved_word(

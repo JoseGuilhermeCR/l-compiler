@@ -307,8 +307,9 @@ Lexer::get_next_token()
             case LexerState::HexadecimalChar:
                 lexeme += c;
                 if (std::isxdigit(static_cast<int>(c)))
-		    return Token(TokenConstType::Char, std::move(lexeme));
-                return LexerError::make_non_existent_lexeme_error(m_line, lexeme);
+                    return Token(TokenConstType::Char, std::move(lexeme));
+                return LexerError::make_non_existent_lexeme_error(m_line,
+                                                                  lexeme);
             case LexerState::IntegerOrFloat:
                 if (c == '.') {
                     lexeme += c;
@@ -340,7 +341,9 @@ Lexer::get_next_token()
         }
     }
 
-    return LexerError(m_line, "Unexpected EOF");
+    if (state != LexerState::Initial)
+        return LexerError(m_line, "Unexpected EOF");
+    return {};
 }
 
 bool
@@ -386,10 +389,8 @@ read_file_from_stdin()
     std::string file;
 
     std::string line;
-    while (std::getline(std::cin, line)) {
-        if (!line.empty())
-            file += line + '\n';
-    }
+    while (std::getline(std::cin, line))
+        file += line + '\n';
 
     /* Remove the extra new line. */
     if (!file.empty())
@@ -408,26 +409,14 @@ main()
     }
 
     SymbolTable table;
-
     Lexer lexer(file, table);
 
     auto maybe_token = lexer.get_next_token();
-    while (std::holds_alternative<Token>(maybe_token)) {
-        const auto& t = std::get<Token>(maybe_token);
-
-        std::cout << "Token(" << t.lexeme();
-
-        if (t.type() == TokenType::Const) {
-            std::cout << ":" << t.token_const_type_as_str() << ')' << '\n';
-        } else {
-            std::cout << ')' << '\n';
-        }
-
+    while (std::holds_alternative<Token>(maybe_token))
         maybe_token = lexer.get_next_token();
-    }
 
     if (std::holds_alternative<std::monostate>(maybe_token)) {
-        std::cout << "all tokens read" << '\n';
+        std::cout << lexer.line_number() << " lines compiled." << '\n';
         return 0;
     }
 
