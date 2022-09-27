@@ -48,7 +48,7 @@ LexerError
 LexerError::make_non_existent_lexeme_error(uint64_t line,
                                            const std::string& lexeme)
 {
-    std::string msg = "Non-existent lexeme found: " + lexeme;
+    std::string msg = "lexema nao identificado [" + lexeme + "].";
     return LexerError(line, std::move(msg));
 }
 
@@ -84,7 +84,7 @@ Lexer::get_next_token()
             ++m_line;
 
         if (!is_in_alphabet(c))
-            return LexerError(m_line, "Unexpected character.");
+            return LexerError(m_line, "caractere invalido.");
 
         switch (state) {
             case LexerState::Initial:
@@ -273,12 +273,14 @@ Lexer::get_next_token()
                                                                       lexeme);
                 break;
             case LexerState::StringConstant:
+                if (c == '\n') {
+                    return LexerError::make_non_existent_lexeme_error(m_line,
+                                                                      lexeme);
+                }
+
                 lexeme += c;
                 if (c == '"')
                     return Token(TokenConstType::String, std::move(lexeme));
-                else if (c == '\n')
-                    return LexerError::make_non_existent_lexeme_error(m_line,
-                                                                      lexeme);
                 break;
             case LexerState::CharOrNumber:
                 if (std::tolower(static_cast<int>(c)) == 'x') {
@@ -392,17 +394,13 @@ read_file_from_stdin()
     while (std::getline(std::cin, line))
         file += line + '\n';
 
-    /* Remove the extra new line. */
-    if (!file.empty())
-        file.pop_back();
-
     return file;
 }
 
 int
 main()
 {
-    const auto file = read_file_from_stdin();
+    const std::string file = read_file_from_stdin();
     if (file.empty()) {
         std::cerr << "Empty input..." << '\n';
         return -1;
