@@ -344,7 +344,7 @@ Lexer::get_next_token()
     }
 
     if (state != LexerState::Initial)
-        return LexerError(m_line, "Unexpected EOF");
+        return LexerError(m_line, "fim de arquivo nao esperado.");
     return {};
 }
 
@@ -401,10 +401,8 @@ int
 main()
 {
     const std::string file = read_file_from_stdin();
-    if (file.empty()) {
-        std::cerr << "Empty input..." << '\n';
+    if (file.empty())
         return -1;
-    }
 
     SymbolTable table;
     Lexer lexer(file, table);
@@ -414,7 +412,7 @@ main()
         maybe_token = lexer.get_next_token();
 
     if (std::holds_alternative<std::monostate>(maybe_token)) {
-        std::cout << lexer.line_number() << " lines compiled." << '\n';
+        std::cout << lexer.current_line_number() << " linhas compiladas" << '\n';
         return 0;
     }
 
