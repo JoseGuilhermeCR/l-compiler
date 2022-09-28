@@ -8,7 +8,7 @@ enum class TokenType
 {
     Identifier,           /* a */
     Keyword,              /* while */
-    Const,                /* const */
+    Const,                /* 5.32f */
     LogicalAnd,           /* && */
     LogicalOr,            /* || */
     NotEqual,             /* != */

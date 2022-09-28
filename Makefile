@@ -2,6 +2,7 @@ OUTPUT := l-compiler
 
 SRC := src/Main.cc \
        src/Lexer.cc \
+       src/Syntatic.cc \
        src/SymbolTable.cc \
        src/Token.cc \
        src/Utils.cc

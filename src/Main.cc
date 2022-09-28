@@ -1,4 +1,5 @@
 #include "Lexer.h"
+#include "Syntatic.h"
 #include "SymbolTable.h"
 #include "Utils.h"
 
@@ -24,18 +25,18 @@ main()
         return -1;
 
     SymbolTable table;
+
     Lexer lexer(file, table);
+    Syntatic syntatic_analyzer(lexer);
 
-    auto maybe_token = lexer.get_next_token();
-    while (std::holds_alternative<Token>(maybe_token))
-        maybe_token = lexer.get_next_token();
-
-    if (std::holds_alternative<std::monostate>(maybe_token)) {
-        std::cout << lexer.current_line_number() << " linhas compiladas" << '\n';
-        return 0;
-    }
-
-    std::cout << std::get<LexerError>(maybe_token) << '\n';
+    syntatic_analyzer.run();
+//
+//    if (std::holds_alternative<std::monostate>(maybe_token)) {
+//        std::cout << lexer.current_line_number() << " linhas compiladas" << '\n';
+//        return 0;
+//    }
+//
+//    std::cout << std::get<LexerError>(maybe_token) << '\n';
 
     return 0;
 }

@@ -373,7 +373,7 @@ Lexer::try_token_from_reserved_word(std::string_view lexeme) const
     if (lowercase_lexeme == "true" || lowercase_lexeme == "false")
         return Token(TokenConstType::Boolean, std::string(lexeme));
 
-    static constexpr std::array<std::string_view, 15> keywords = {
+    static constexpr std::array<std::string_view, 15> keywords {
         "const",  "int", "char",   "while", "if",      "float", "else",
         "readln", "div", "string", "write", "writeln", "mod",   "boolean",
     };
