@@ -6,7 +6,11 @@
 #include <string.h>
 #include <strings.h>
 
+#if !defined(VERDE)
 #define ERR_STREAM stderr
+#else
+#define ERR_STREAM stdout
+#endif
 
 #define MAX_FILE_SIZE (32U * 1024U)
 #define MAX_LEXEME_SIZE (32U)
@@ -669,6 +673,14 @@ read_file_from_stdin(struct stdin_file *file, uint32_t capacity)
     while (file->size < capacity && !feof(stdin))
         file->buffer[file->size++] = fgetc(stdin);
     file->buffer[file->size] = '\0';
+
+    // Remove <CR> from file. Basically, make file
+    // have only <LF> as line terminator.
+    char *cr = strchr(file->buffer, '\r');
+    while (cr) {
+        *cr = ' ';
+        cr = strchr(file->buffer, '\r');
+    }
 
     return 0;
 }
