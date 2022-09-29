@@ -1,37 +1,32 @@
 OUTPUT := l-compiler
 
-SRC := src/Main.cc \
-       src/Lexer.cc \
-       src/Syntatic.cc \
-       src/SymbolTable.cc \
-       src/Token.cc \
-       src/Utils.cc
+SRC := src/main.c
 
-OBJ := $(patsubst %.cc,%.o,$(SRC))
-DEP := $(patsubst %.cc,%.d,$(SRC))
+OBJ := $(patsubst %.c,%.o,$(SRC))
+DEP := $(patsubst %.c,%.d,$(SRC))
 
-CXX := g++
+C := gcc
 
-CXX_FLAGS := -Wall -Wextra -Wshadow
-CXX_FLAGS += -std=c++20
+C_FLAGS := -Wall -Wextra -Wshadow
+C_FLAGS += -std=gnu11
 
 ifdef DEBUG_SYMBOLS
-CXX_FLAGS += -ggdb3
+C_FLAGS += -ggdb3
 endif
 
 ifdef OPTIMIZATION_LEVEL
-CXX_FLAGS += -O$(OPTIMIZATION_LEVEL)
+C_FLAGS += -O$(OPTIMIZATION_LEVEL)
 endif
 
 INCLUDE := -Iinclude
 DEFINES :=
 LINKER_FLAGS := 
 
-%.o: %.cc
-	$(CXX) $(CXX_FLAGS) $(INCLUDE) $(DEFINES) -c $< -o $@
+%.o: %.c
+	$(C) $(C_FLAGS) $(INCLUDE) $(DEFINES) -c $< -o $@
 
 $(OUTPUT): $(OBJ)
-	$(CXX) $^ $(LINKER_FLAGS) -o $@
+	$(C) $^ $(LINKER_FLAGS) -o $@
 
 -include $(DEP)
 
