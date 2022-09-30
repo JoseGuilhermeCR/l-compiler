@@ -808,12 +808,6 @@ syntatic_decl_const(struct syntatic_ctx *ctx)
 }
 
 static int
-syntatic_write(struct syntatic_ctx *ctx)
-{
-    return -1;
-}
-
-static int
 syntatic_read(struct syntatic_ctx *ctx)
 {
     if (syntatic_match_token(ctx, TOKEN_OPENING_PAREN) != SYNTATIC_MATCH_OK)
@@ -988,6 +982,32 @@ syntatic_exp(struct syntatic_ctx *ctx)
 }
 
 static int
+syntatic_write(struct syntatic_ctx *ctx)
+{
+    if (syntatic_match_token(ctx, TOKEN_OPENING_PAREN) != SYNTATIC_MATCH_OK)
+        return -1;
+
+    if (syntatic_exp(ctx) < 0)
+        return -1;
+
+    while (ctx->entry->token == TOKEN_COMMA) {
+        if (syntatic_match_token(ctx, TOKEN_COMMA) != SYNTATIC_MATCH_OK)
+            return -1;
+        if (syntatic_exp(ctx) < 0)
+            return -1;
+    }
+
+    if (syntatic_match_token(ctx, TOKEN_CLOSING_PAREN) != SYNTATIC_MATCH_OK)
+        return -1;
+
+    if (syntatic_match_token(ctx, TOKEN_SEMICOLON) != SYNTATIC_MATCH_OK)
+        return -1;
+
+    puts("write_success");
+    return 0;
+}
+
+static int
 syntatic_attr(struct syntatic_ctx *ctx)
 {
     if (ctx->entry->token == TOKEN_OPENING_SQUARE_BRACKET) {
@@ -1152,11 +1172,6 @@ main(void)
         syntatic_init(&syntatic_ctx, &lexer, &entry);
         syntatic_start(&syntatic_ctx);
     }
-
-    // if (result == LEXER_RESULT_ERROR) {
-    // } else {
-    //     fprintf(ERR_STREAM, "%i linhas compiladas.\n", lexer.line);
-    // }
 
     symbol_table_destroy(&table);
     destroy_stdin_file(&file);
