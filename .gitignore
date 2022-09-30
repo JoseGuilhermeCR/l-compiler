@@ -12,3 +12,4 @@ l-compiler
 
 # Ignore clangd
 compile_commands.json
+.cache
