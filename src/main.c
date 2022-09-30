@@ -99,8 +99,10 @@ hash_symbol_lexeme(const char *lexeme)
 {
     // TODO(Jose): Make a better hashing function.
     uint32_t sum = 0;
-    while (*lexeme)
-        sum += *lexeme++;
+    while (*lexeme) {
+        sum += tolower(*lexeme);
+        ++lexeme;
+    }
     return sum;
 }
 
