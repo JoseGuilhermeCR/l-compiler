@@ -23,6 +23,12 @@
                 __LINE__);                                                     \
     } while (0)
 
+#if defined(ASSERT_UNREACHABLE)
+#define UNREACHABLE() do { assert(0); } while (0)
+#else
+#define UNREACHABLE()
+#endif
+
 enum token
 {
     TOKEN_IDENTIFIER, /* A */
@@ -682,7 +688,7 @@ lexer_print_error(const struct lexer *lexer)
             fputs("caractere invalido.\n", ERR_STREAM);
             break;
         default:
-            __builtin_unreachable();
+            UNREACHABLE();
     }
 }
 
@@ -849,7 +855,7 @@ syntatic_is_first_of_f(struct syntatic_ctx *ctx)
             return 0;
     }
 
-    __builtin_unreachable();
+    UNREACHABLE();
 }
 
 static int
@@ -905,7 +911,7 @@ syntatic_f(struct syntatic_ctx *ctx)
             }
             break;
         default:
-            __builtin_unreachable();
+            UNREACHABLE();
     }
 
     puts("f_success");
@@ -1075,7 +1081,7 @@ syntatic_is_first_of_command(struct syntatic_ctx *ctx)
             return 0;
     }
 
-    __builtin_unreachable();
+    UNREACHABLE();
 }
 
 static int
@@ -1109,7 +1115,7 @@ syntatic_command(struct syntatic_ctx *ctx)
                 return -1;
             break;
         default:
-            __builtin_unreachable();
+            UNREACHABLE();
     }
 
     return 0;
@@ -1148,7 +1154,7 @@ syntatic_is_first_of_s(struct syntatic_ctx *ctx)
             return 0;
     }
 
-    __builtin_unreachable();
+    UNREACHABLE();
 }
 
 static int

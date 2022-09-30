@@ -22,6 +22,10 @@ INCLUDE := -Iinclude
 DEFINES :=
 LINKER_FLAGS := 
 
+ifdef ASSERT_UNREACHABLE
+DEFINES += -DASSERT_UNREACHABLE
+endif
+
 %.o: %.c
 	$(C) $(C_FLAGS) $(INCLUDE) $(DEFINES) -c $< -o $@
 
