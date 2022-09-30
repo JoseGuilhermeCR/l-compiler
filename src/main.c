@@ -741,46 +741,44 @@ syntatic_decl_var(struct syntatic_ctx *ctx)
             return -1;
         puts("decl_var_success");
         return 0;
-    } else if (ctx->entry->token == TOKEN_COMMA) {
-        // Handle multiple variable declaration.
-        while (ctx->entry->token == TOKEN_COMMA) {
-            if (syntatic_match_token(ctx, TOKEN_COMMA) != SYNTATIC_MATCH_OK)
-                return -1;
+    } else if (ctx->entry->token != TOKEN_COMMA) {
+        puts("not semicolon nor comma");
+        return -1;
+    }
 
-            if (syntatic_match_token(ctx, TOKEN_IDENTIFIER) !=
+    // Handle multiple variable declaration.
+    while (ctx->entry->token == TOKEN_COMMA) {
+        if (syntatic_match_token(ctx, TOKEN_COMMA) != SYNTATIC_MATCH_OK)
+            return -1;
+
+        if (syntatic_match_token(ctx, TOKEN_IDENTIFIER) != SYNTATIC_MATCH_OK)
+            return -1;
+
+        // Handle possible assignment for variable.
+        if (ctx->entry->token == TOKEN_ASSIGNMENT) {
+            if (syntatic_match_token(ctx, TOKEN_ASSIGNMENT) !=
                 SYNTATIC_MATCH_OK)
                 return -1;
 
-            // Handle possible assignment for variable.
-            if (ctx->entry->token == TOKEN_ASSIGNMENT) {
-                if (syntatic_match_token(ctx, TOKEN_ASSIGNMENT) !=
+            if (ctx->entry->token == TOKEN_MINUS) {
+                if (syntatic_match_token(ctx, TOKEN_MINUS) != SYNTATIC_MATCH_OK)
+                    return -1;
+
+                if (syntatic_match_token(ctx, TOKEN_CONSTANT) !=
                     SYNTATIC_MATCH_OK)
                     return -1;
-
-                if (ctx->entry->token == TOKEN_MINUS) {
-                    if (syntatic_match_token(ctx, TOKEN_MINUS) !=
-                        SYNTATIC_MATCH_OK)
-                        return -1;
-
-                    if (syntatic_match_token(ctx, TOKEN_CONSTANT) !=
-                        SYNTATIC_MATCH_OK)
-                        return -1;
-                } else if (syntatic_match_token(ctx, TOKEN_CONSTANT) !=
-                           SYNTATIC_MATCH_OK) {
-                    return -1;
-                }
+            } else if (syntatic_match_token(ctx, TOKEN_CONSTANT) !=
+                       SYNTATIC_MATCH_OK) {
+                return -1;
             }
         }
-
-        if (syntatic_match_token(ctx, TOKEN_SEMICOLON) != SYNTATIC_MATCH_OK)
-            return -1;
-
-        puts("decl_var_success");
-        return 0;
     }
 
-    puts("not semicolon nor comma");
-    return -1;
+    if (syntatic_match_token(ctx, TOKEN_SEMICOLON) != SYNTATIC_MATCH_OK)
+        return -1;
+
+    puts("decl_var_success");
+    return 0;
 }
 
 static int
@@ -831,6 +829,190 @@ syntatic_read(struct syntatic_ctx *ctx)
         return -1;
 
     puts("readln_success");
+    return 0;
+}
+
+static int
+syntatic_is_first_of_f(struct syntatic_ctx *ctx)
+{
+    switch (ctx->entry->token) {
+        case TOKEN_NOT:
+        case TOKEN_OPENING_PAREN:
+        case TOKEN_INT:
+        case TOKEN_FLOAT:
+        case TOKEN_CONSTANT:
+        case TOKEN_IDENTIFIER:
+            return 1;
+        default:
+            return 0;
+    }
+
+    __builtin_unreachable();
+}
+
+static int
+syntatic_exp(struct syntatic_ctx *ctx);
+
+static int
+syntatic_f(struct syntatic_ctx *ctx)
+{
+    if (!syntatic_is_first_of_f(ctx)) {
+        puts("SYNTATIC_ERROR");
+        return -1;
+    }
+
+    enum token tok = ctx->entry->token;
+    if (syntatic_match_token(ctx, tok) != SYNTATIC_MATCH_OK)
+        return -1;
+
+    switch (tok) {
+        case TOKEN_NOT:
+            if (syntatic_f(ctx) < 0)
+                return -1;
+            break;
+        case TOKEN_OPENING_PAREN:
+            if (syntatic_exp(ctx) < 0)
+                return -1;
+            if (syntatic_match_token(ctx, TOKEN_CLOSING_PAREN) !=
+                SYNTATIC_MATCH_OK)
+                return -1;
+            break;
+        case TOKEN_INT:
+        case TOKEN_FLOAT:
+            if (syntatic_match_token(ctx, TOKEN_OPENING_PAREN) !=
+                SYNTATIC_MATCH_OK)
+                return -1;
+            if (syntatic_exp(ctx) < 0)
+                return -1;
+            if (syntatic_match_token(ctx, TOKEN_CLOSING_PAREN) !=
+                SYNTATIC_MATCH_OK)
+                return -1;
+            break;
+        case TOKEN_CONSTANT:
+            break;
+        case TOKEN_IDENTIFIER:
+            if (ctx->entry->token == TOKEN_OPENING_SQUARE_BRACKET) {
+                if (syntatic_match_token(ctx, TOKEN_OPENING_SQUARE_BRACKET) !=
+                    SYNTATIC_MATCH_OK)
+                    return -1;
+                if (syntatic_exp(ctx) < 0)
+                    return -1;
+                if (syntatic_match_token(ctx, TOKEN_CLOSING_SQUARE_BRACKET) !=
+                    SYNTATIC_MATCH_OK)
+                    return -1;
+            }
+            break;
+        default:
+            __builtin_unreachable();
+    }
+
+    puts("f_success");
+    return 0;
+}
+
+static int
+syntatic_t(struct syntatic_ctx *ctx)
+{
+    if (syntatic_f(ctx) < 0)
+        return -1;
+
+    enum token tok = ctx->entry->token;
+    while (tok == TOKEN_TIMES || tok == TOKEN_LOGICAL_AND || tok == TOKEN_MOD ||
+           tok == TOKEN_DIV || tok == TOKEN_DIVISION) {
+        if (syntatic_match_token(ctx, tok) != SYNTATIC_MATCH_OK)
+            return -1;
+
+        if (syntatic_f(ctx) < 0)
+            return -1;
+
+        tok = ctx->entry->token;
+    }
+
+    puts("t_success");
+    return 0;
+}
+
+static int
+syntatic_exps(struct syntatic_ctx *ctx)
+{
+    enum token tok = ctx->entry->token;
+    if (tok == TOKEN_MINUS || tok == TOKEN_PLUS) {
+        if (syntatic_match_token(ctx, ctx->entry->token) != SYNTATIC_MATCH_OK)
+            return -1;
+    }
+
+    if (syntatic_t(ctx) < 0)
+        return -1;
+
+    tok = ctx->entry->token;
+    while (tok == TOKEN_PLUS || tok == TOKEN_MINUS || tok == TOKEN_LOGICAL_OR) {
+        if (syntatic_match_token(ctx, tok) != SYNTATIC_MATCH_OK)
+            return -1;
+
+        if (syntatic_t(ctx) < 0)
+            return -1;
+
+        tok = ctx->entry->token;
+    }
+
+    puts("exps_success");
+    return 0;
+}
+
+static int
+syntatic_exp(struct syntatic_ctx *ctx)
+{
+    if (syntatic_exps(ctx) < 0)
+        return -1;
+
+    switch (ctx->entry->token) {
+        case TOKEN_EQUAL:
+        case TOKEN_NOT_EQUAL:
+        case TOKEN_LESS:
+        case TOKEN_LESS_EQUAL:
+        case TOKEN_GREATER:
+        case TOKEN_GREATER_EQUAL:
+            if (syntatic_match_token(ctx, ctx->entry->token) !=
+                SYNTATIC_MATCH_OK)
+                return -1;
+
+            if (syntatic_exps(ctx) < 0)
+                return -1;
+            break;
+        default:
+            break;
+    }
+
+    puts("exp_success");
+    return 0;
+}
+
+static int
+syntatic_attr(struct syntatic_ctx *ctx)
+{
+    if (ctx->entry->token == TOKEN_OPENING_SQUARE_BRACKET) {
+        if (syntatic_match_token(ctx, TOKEN_OPENING_SQUARE_BRACKET) !=
+            SYNTATIC_MATCH_OK)
+            return -1;
+
+        if (syntatic_exp(ctx) < 0)
+            return -1;
+
+        if (syntatic_match_token(ctx, TOKEN_CLOSING_SQUARE_BRACKET) !=
+            SYNTATIC_MATCH_OK)
+            return -1;
+    }
+
+    if (syntatic_match_token(ctx, TOKEN_ASSIGNMENT) != SYNTATIC_MATCH_OK)
+        return -1;
+
+    if (syntatic_exp(ctx) < 0)
+        return -1;
+
+    if (syntatic_match_token(ctx, TOKEN_SEMICOLON) != SYNTATIC_MATCH_OK)
+        return -1;
+
+    puts("attr_ok");
     return 0;
 }
 
@@ -888,6 +1070,10 @@ syntatic_start(struct syntatic_ctx *ctx)
                 break;
             case TOKEN_READLN:
                 if (syntatic_read(ctx) < 0)
+                    return -1;
+                break;
+            case TOKEN_IDENTIFIER:
+                if (syntatic_attr(ctx) < 0)
                     return -1;
                 break;
             default:
