@@ -192,6 +192,27 @@ symbol_table_populate_with_keywords(struct symbol_table *table)
     assert(symbol_table_insert(table, "boolean", TOKEN_BOOLEAN) == 0);
 }
 
+static void
+symbol_table_destroy(struct symbol_table *table)
+{
+    for (uint32_t i = 0; i < table->capacity; ++i) {
+        struct symbol *s = &table->symbols[i];
+        if (s->lexeme[0] == '\0')
+            continue;
+
+        s = s->next;
+        while (s) {
+            struct symbol *tmp = s->next;
+            free(s);
+            s = tmp;
+        }
+    }
+
+    free(table->symbols);
+    table->symbols = NULL;
+    table->capacity = 0;
+}
+
 // Lexer Stuff
 
 enum lexer_state
@@ -718,7 +739,12 @@ main(void)
         fprintf(ERR_STREAM, "%i linhas compiladas.\n", lexer.line);
     }
 
-    // TODO(Jose): Destroy table.
+    // if (result == LEXER_RESULT_ERROR) {
+    // } else {
+    //     fprintf(ERR_STREAM, "%i linhas compiladas.\n", lexer.line);
+    // }
+
+    symbol_table_destroy(&table);
     destroy_stdin_file(&file);
     return 0;
 }
