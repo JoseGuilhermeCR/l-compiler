@@ -678,6 +678,237 @@ lexer_print_error(const struct lexer *lexer)
     }
 }
 
+// Syntatic Stuff
+
+enum syntatic_match_result
+{
+    SYNTATIC_MATCH_OK,
+    SYNTATIC_MATCH_ERROR,
+};
+
+struct syntatic_ctx
+{
+    struct lexer *lexer;
+    struct lexical_entry *entry;
+};
+
+static enum syntatic_match_result
+syntatic_match_token(struct syntatic_ctx *ctx, enum token token)
+{
+    if (ctx->entry->token == token) {
+        enum lexer_result result = lexer_get_next_token(ctx->lexer, ctx->entry);
+        if (result == LEXER_RESULT_ERROR) {
+            lexer_print_error(ctx->lexer);
+            return SYNTATIC_MATCH_ERROR;
+        } else if (result == LEXER_RESULT_EMPTY) {
+            goto syntatic_error;
+        }
+
+        return SYNTATIC_MATCH_OK;
+    }
+
+syntatic_error:
+    // TODO(Jose): Print a syntatic error.
+    fprintf(ERR_STREAM, "SYNTATIC_ERROR\n");
+    return SYNTATIC_MATCH_ERROR;
+}
+
+static int
+syntatic_decl_var(struct syntatic_ctx *ctx)
+{
+    if (syntatic_match_token(ctx, TOKEN_IDENTIFIER) != SYNTATIC_MATCH_OK)
+        return -1;
+
+    // Handle possible assignment for the first declared variable.
+    if (ctx->entry->token == TOKEN_ASSIGNMENT) {
+        if (syntatic_match_token(ctx, TOKEN_ASSIGNMENT) != SYNTATIC_MATCH_OK)
+            return -1;
+
+        if (ctx->entry->token == TOKEN_MINUS) {
+            if (syntatic_match_token(ctx, TOKEN_MINUS) != SYNTATIC_MATCH_OK)
+                return -1;
+
+            if (syntatic_match_token(ctx, TOKEN_CONSTANT) != SYNTATIC_MATCH_OK)
+                return -1;
+        } else if (syntatic_match_token(ctx, TOKEN_CONSTANT) !=
+                   SYNTATIC_MATCH_OK) {
+            return -1;
+        }
+    }
+
+    if (ctx->entry->token == TOKEN_SEMICOLON) {
+        if (syntatic_match_token(ctx, TOKEN_SEMICOLON) != SYNTATIC_MATCH_OK)
+            return -1;
+        puts("decl_var_success");
+        return 0;
+    } else if (ctx->entry->token == TOKEN_COMMA) {
+        // Handle multiple variable declaration.
+        while (ctx->entry->token == TOKEN_COMMA) {
+            if (syntatic_match_token(ctx, TOKEN_COMMA) != SYNTATIC_MATCH_OK)
+                return -1;
+
+            if (syntatic_match_token(ctx, TOKEN_IDENTIFIER) !=
+                SYNTATIC_MATCH_OK)
+                return -1;
+
+            // Handle possible assignment for variable.
+            if (ctx->entry->token == TOKEN_ASSIGNMENT) {
+                if (syntatic_match_token(ctx, TOKEN_ASSIGNMENT) !=
+                    SYNTATIC_MATCH_OK)
+                    return -1;
+
+                if (ctx->entry->token == TOKEN_MINUS) {
+                    if (syntatic_match_token(ctx, TOKEN_MINUS) !=
+                        SYNTATIC_MATCH_OK)
+                        return -1;
+
+                    if (syntatic_match_token(ctx, TOKEN_CONSTANT) !=
+                        SYNTATIC_MATCH_OK)
+                        return -1;
+                } else if (syntatic_match_token(ctx, TOKEN_CONSTANT) !=
+                           SYNTATIC_MATCH_OK) {
+                    return -1;
+                }
+            }
+        }
+
+        if (syntatic_match_token(ctx, TOKEN_SEMICOLON) != SYNTATIC_MATCH_OK)
+            return -1;
+
+        puts("decl_var_success");
+        return 0;
+    }
+
+    puts("not semicolon nor comma");
+    return -1;
+}
+
+static int
+syntatic_decl_const(struct syntatic_ctx *ctx)
+{
+    if (syntatic_match_token(ctx, TOKEN_IDENTIFIER) != SYNTATIC_MATCH_OK)
+        return -1;
+
+    if (syntatic_match_token(ctx, TOKEN_EQUAL) != SYNTATIC_MATCH_OK)
+        return -1;
+
+    if (ctx->entry->token == TOKEN_MINUS) {
+        if (syntatic_match_token(ctx, TOKEN_MINUS) != SYNTATIC_MATCH_OK)
+            return -1;
+
+        if (syntatic_match_token(ctx, TOKEN_CONSTANT) != SYNTATIC_MATCH_OK)
+            return -1;
+    } else if (syntatic_match_token(ctx, TOKEN_CONSTANT) != SYNTATIC_MATCH_OK) {
+        return -1;
+    }
+
+    if (syntatic_match_token(ctx, TOKEN_SEMICOLON) != SYNTATIC_MATCH_OK)
+        return -1;
+
+    puts("decl_const_success");
+    return 0;
+}
+
+static int
+syntatic_write(struct syntatic_ctx *ctx)
+{
+    return -1;
+}
+
+static int
+syntatic_read(struct syntatic_ctx *ctx)
+{
+    if (syntatic_match_token(ctx, TOKEN_OPENING_PAREN) != SYNTATIC_MATCH_OK)
+        return -1;
+
+    if (syntatic_match_token(ctx, TOKEN_IDENTIFIER) != SYNTATIC_MATCH_OK)
+        return -1;
+
+    if (syntatic_match_token(ctx, TOKEN_CLOSING_PAREN) != SYNTATIC_MATCH_OK)
+        return -1;
+
+    if (syntatic_match_token(ctx, TOKEN_SEMICOLON) != SYNTATIC_MATCH_OK)
+        return -1;
+
+    puts("readln_success");
+    return 0;
+}
+
+static int
+syntatic_is_first_of_s(struct syntatic_ctx *ctx)
+{
+    switch (ctx->entry->token) {
+        case TOKEN_INT:
+        case TOKEN_FLOAT:
+        case TOKEN_STRING:
+        case TOKEN_BOOLEAN:
+        case TOKEN_CHAR:
+        case TOKEN_CONST:
+        case TOKEN_SEMICOLON:
+        case TOKEN_IDENTIFIER:
+        case TOKEN_WHILE:
+        case TOKEN_IF:
+        case TOKEN_READLN:
+        case TOKEN_WRITE:
+        case TOKEN_WRITELN:
+            return 1;
+        default:
+            return 0;
+    }
+}
+
+static int
+syntatic_start(struct syntatic_ctx *ctx)
+{
+    while (syntatic_is_first_of_s(ctx)) {
+        enum token tok = ctx->entry->token;
+
+        if (syntatic_match_token(ctx, tok) != SYNTATIC_MATCH_OK)
+            return -1;
+
+        switch (tok) {
+            case TOKEN_INT:
+            case TOKEN_FLOAT:
+            case TOKEN_STRING:
+            case TOKEN_BOOLEAN:
+            case TOKEN_CHAR:
+                if (syntatic_decl_var(ctx) < 0)
+                    return -1;
+                break;
+            case TOKEN_CONST:
+                if (syntatic_decl_const(ctx) < 0)
+                    return -1;
+                break;
+            case TOKEN_SEMICOLON:
+                break;
+            case TOKEN_WRITE:
+            case TOKEN_WRITELN:
+                if (syntatic_write(ctx) < 0)
+                    return -1;
+                break;
+            case TOKEN_READLN:
+                if (syntatic_read(ctx) < 0)
+                    return -1;
+                break;
+            default:
+                puts("SYNTATIC ERROR");
+                break;
+        }
+    }
+
+    puts("SYNTATIC_ERROR");
+    return -1;
+}
+
+static void
+syntatic_init(struct syntatic_ctx *ctx,
+              struct lexer *lexer,
+              struct lexical_entry *entry)
+{
+    ctx->lexer = lexer;
+    ctx->entry = entry;
+}
+
 // Main Stuff
 static int
 read_file_from_stdin(struct stdin_file *file, uint32_t capacity)
@@ -730,13 +961,10 @@ main(void)
 
     struct lexical_entry entry;
     enum lexer_result result = lexer_get_next_token(&lexer, &entry);
-    while (result == LEXER_RESULT_FOUND)
-        result = lexer_get_next_token(&lexer, &entry);
-
-    if (result == LEXER_RESULT_ERROR) {
-        lexer_print_error(&lexer);
-    } else {
-        fprintf(ERR_STREAM, "%i linhas compiladas.\n", lexer.line);
+    if (result == LEXER_RESULT_FOUND) {
+        struct syntatic_ctx syntatic_ctx;
+        syntatic_init(&syntatic_ctx, &lexer, &entry);
+        syntatic_start(&syntatic_ctx);
     }
 
     // if (result == LEXER_RESULT_ERROR) {
