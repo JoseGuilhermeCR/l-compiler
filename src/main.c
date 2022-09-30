@@ -1109,7 +1109,7 @@ syntatic_command(struct syntatic_ctx *ctx)
                 return -1;
             break;
         default:
-            break;
+            __builtin_unreachable();
     }
 
     return 0;
