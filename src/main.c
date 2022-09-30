@@ -15,6 +15,14 @@
 #define MAX_FILE_SIZE (32U * 1024U)
 #define MAX_LEXEME_SIZE (32U)
 
+#define SYNTATIC_ERROR()                                                       \
+    do {                                                                       \
+        fprintf(ERR_STREAM,                                                    \
+                "SYNTATIC_ERROR FUNCTION %s LINE %i\n",                        \
+                __func__,                                                      \
+                __LINE__);                                                     \
+    } while (0)
+
 enum token
 {
     TOKEN_IDENTIFIER, /* A */
@@ -851,7 +859,7 @@ static int
 syntatic_f(struct syntatic_ctx *ctx)
 {
     if (!syntatic_is_first_of_f(ctx)) {
-        puts("SYNTATIC_ERROR");
+        SYNTATIC_ERROR();
         return -1;
     }
 
@@ -1037,15 +1045,24 @@ syntatic_attr(struct syntatic_ctx *ctx)
 }
 
 static int
-syntatic_is_first_of_s(struct syntatic_ctx *ctx)
+syntatic_paren_exp(struct syntatic_ctx *ctx)
+{
+    if (syntatic_match_token(ctx, TOKEN_OPENING_PAREN) != SYNTATIC_MATCH_OK)
+        return -1;
+
+    if (syntatic_exp(ctx) < 0)
+        return -1;
+
+    if (syntatic_match_token(ctx, TOKEN_CLOSING_PAREN) != SYNTATIC_MATCH_OK)
+        return -1;
+
+    return 0;
+}
+
+static int
+syntatic_is_first_of_command(struct syntatic_ctx *ctx)
 {
     switch (ctx->entry->token) {
-        case TOKEN_INT:
-        case TOKEN_FLOAT:
-        case TOKEN_STRING:
-        case TOKEN_BOOLEAN:
-        case TOKEN_CHAR:
-        case TOKEN_CONST:
         case TOKEN_SEMICOLON:
         case TOKEN_IDENTIFIER:
         case TOKEN_WHILE:
@@ -1057,52 +1074,117 @@ syntatic_is_first_of_s(struct syntatic_ctx *ctx)
         default:
             return 0;
     }
+
+    __builtin_unreachable();
+}
+
+static int
+syntatic_while(struct syntatic_ctx *ctx);
+
+static int
+syntatic_command(struct syntatic_ctx *ctx)
+{
+    enum token tok = ctx->entry->token;
+    if (syntatic_match_token(ctx, tok) != SYNTATIC_MATCH_OK)
+        return -1;
+
+    switch (tok) {
+        case TOKEN_SEMICOLON:
+            break;
+        case TOKEN_WRITE:
+        case TOKEN_WRITELN:
+            if (syntatic_write(ctx) < 0)
+                return -1;
+            break;
+        case TOKEN_READLN:
+            if (syntatic_read(ctx) < 0)
+                return -1;
+            break;
+        case TOKEN_IDENTIFIER:
+            if (syntatic_attr(ctx) < 0)
+                return -1;
+            break;
+        case TOKEN_WHILE:
+            if (syntatic_while(ctx) < 0)
+                return -1;
+            break;
+        default:
+            break;
+    }
+
+    __builtin_unreachable();
+}
+
+static int
+syntatic_while(struct syntatic_ctx *ctx)
+{
+    if (syntatic_paren_exp(ctx) < 0)
+        return -1;
+
+    if (syntatic_is_first_of_command(ctx)) {
+
+    } else if (ctx->entry->token == TOKEN_OPENING_CURLY_BRACKET) {
+    }
+
+    SYNTATIC_ERROR();
+    return -1;
+}
+
+static int
+syntatic_is_first_of_s(struct syntatic_ctx *ctx)
+{
+    if (syntatic_is_first_of_command(ctx))
+        return 1;
+
+    switch (ctx->entry->token) {
+        case TOKEN_INT:
+        case TOKEN_FLOAT:
+        case TOKEN_STRING:
+        case TOKEN_BOOLEAN:
+        case TOKEN_CHAR:
+        case TOKEN_CONST:
+            return 1;
+        default:
+            return 0;
+    }
+
+    __builtin_unreachable();
 }
 
 static int
 syntatic_start(struct syntatic_ctx *ctx)
 {
     while (syntatic_is_first_of_s(ctx)) {
-        enum token tok = ctx->entry->token;
+        if (syntatic_is_first_of_command(ctx)) {
+            if (syntatic_command(ctx) < 0)
+                return -1;
+        } else {
+            // Handle DECL_VAR and DECL_CONST.
+            enum token tok = ctx->entry->token;
+            if (syntatic_match_token(ctx, tok) != SYNTATIC_MATCH_OK)
+                return -1;
 
-        if (syntatic_match_token(ctx, tok) != SYNTATIC_MATCH_OK)
-            return -1;
-
-        switch (tok) {
-            case TOKEN_INT:
-            case TOKEN_FLOAT:
-            case TOKEN_STRING:
-            case TOKEN_BOOLEAN:
-            case TOKEN_CHAR:
-                if (syntatic_decl_var(ctx) < 0)
-                    return -1;
-                break;
-            case TOKEN_CONST:
-                if (syntatic_decl_const(ctx) < 0)
-                    return -1;
-                break;
-            case TOKEN_SEMICOLON:
-                break;
-            case TOKEN_WRITE:
-            case TOKEN_WRITELN:
-                if (syntatic_write(ctx) < 0)
-                    return -1;
-                break;
-            case TOKEN_READLN:
-                if (syntatic_read(ctx) < 0)
-                    return -1;
-                break;
-            case TOKEN_IDENTIFIER:
-                if (syntatic_attr(ctx) < 0)
-                    return -1;
-                break;
-            default:
-                puts("SYNTATIC ERROR");
-                break;
+            switch (tok) {
+                case TOKEN_INT:
+                case TOKEN_FLOAT:
+                case TOKEN_STRING:
+                case TOKEN_BOOLEAN:
+                case TOKEN_CHAR:
+                    if (syntatic_decl_var(ctx) < 0)
+                        return -1;
+                    break;
+                case TOKEN_CONST:
+                    if (syntatic_decl_const(ctx) < 0)
+                        return -1;
+                    break;
+                default:
+                    SYNTATIC_ERROR();
+                    break;
+            }
         }
     }
 
-    puts("SYNTATIC_ERROR");
+    SYNTATIC_ERROR();
     return -1;
 }
 
