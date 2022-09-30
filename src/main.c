@@ -699,6 +699,7 @@ lexer_print_error(const struct lexer *lexer)
 enum syntatic_match_result
 {
     SYNTATIC_MATCH_OK,
+    SYNTATIC_MATCH_END,
     SYNTATIC_MATCH_ERROR,
 };
 
@@ -717,15 +718,14 @@ syntatic_match_token(struct syntatic_ctx *ctx, enum token token)
             lexer_print_error(ctx->lexer);
             return SYNTATIC_MATCH_ERROR;
         } else if (result == LEXER_RESULT_EMPTY) {
-            goto syntatic_error;
+            return SYNTATIC_MATCH_END;
         }
 
         return SYNTATIC_MATCH_OK;
     }
 
-syntatic_error:
     // TODO(Jose): Print a syntatic error.
-    fprintf(ERR_STREAM, "SYNTATIC_ERROR\n");
+    SYNTATIC_ERROR();
     return SYNTATIC_MATCH_ERROR;
 }
 
@@ -734,6 +734,8 @@ syntatic_decl_var(struct syntatic_ctx *ctx)
 {
     if (syntatic_match_token(ctx, TOKEN_IDENTIFIER) != SYNTATIC_MATCH_OK)
         return -1;
+
+    // TODO: If not ASSIGNMENT, nor COMMA nor ; ERROR.
 
     // Handle possible assignment for the first declared variable.
     if (ctx->entry->token == TOKEN_ASSIGNMENT) {
@@ -1130,8 +1132,24 @@ syntatic_while(struct syntatic_ctx *ctx)
         return -1;
 
     if (syntatic_is_first_of_command(ctx)) {
-
+        if (syntatic_command(ctx) < 0)
+            return -1;
+        puts("while_success");
+        return 0;
     } else if (ctx->entry->token == TOKEN_OPENING_CURLY_BRACKET) {
+        if (syntatic_match_token(ctx, TOKEN_OPENING_CURLY_BRACKET) != SYNTATIC_MATCH_OK)
+            return -1;
+
+        while (syntatic_is_first_of_command(ctx)) {
+            if (syntatic_command(ctx) < 0)
+                return -1;
+        }
+
+        if (syntatic_match_token(ctx, TOKEN_CLOSING_CURLY_BRACKET) != SYNTATIC_MATCH_OK)
+            return -1;
+
+        puts("while_bracket_success");
+        return 0;
     }
 
     SYNTATIC_ERROR();
@@ -1192,8 +1210,7 @@ syntatic_start(struct syntatic_ctx *ctx)
         }
     }
 
-    SYNTATIC_ERROR();
-    return -1;
+    return 0;
 }
 
 static void
