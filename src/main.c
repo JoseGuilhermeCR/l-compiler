@@ -1112,7 +1112,7 @@ syntatic_command(struct syntatic_ctx *ctx)
             break;
     }
 
-    __builtin_unreachable();
+    return 0;
 }
 
 static int
