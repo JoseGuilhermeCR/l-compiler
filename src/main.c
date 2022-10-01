@@ -821,9 +821,6 @@ syntatic_decl_var(struct syntatic_ctx *ctx)
 {
     MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
 
-    // TODO: If not ASSIGNMENT, nor COMMA nor ; ERROR.
-
-    // Handle possible assignment for the first declared variable.
     if (ctx->entry->token == TOKEN_ASSIGNMENT) {
         MATCH_OR_ERROR(ctx, TOKEN_ASSIGNMENT);
 
@@ -838,30 +835,30 @@ syntatic_decl_var(struct syntatic_ctx *ctx)
     if (ctx->entry->token == TOKEN_SEMICOLON) {
         MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
         return 0;
-    } else if (ctx->entry->token != TOKEN_COMMA) {
-        return -1;
-    }
+    } else if (ctx->entry->token == TOKEN_COMMA) {
+        while (ctx->entry->token == TOKEN_COMMA) {
+            MATCH_OR_ERROR(ctx, TOKEN_COMMA);
+            MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
 
-    // Handle multiple variable declaration.
-    while (ctx->entry->token == TOKEN_COMMA) {
-        MATCH_OR_ERROR(ctx, TOKEN_COMMA);
-        MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
+            // Handle possible assignment for variable.
+            if (ctx->entry->token == TOKEN_ASSIGNMENT) {
+                MATCH_OR_ERROR(ctx, TOKEN_ASSIGNMENT);
 
-        // Handle possible assignment for variable.
-        if (ctx->entry->token == TOKEN_ASSIGNMENT) {
-            MATCH_OR_ERROR(ctx, TOKEN_ASSIGNMENT);
-
-            if (ctx->entry->token == TOKEN_MINUS) {
-                MATCH_OR_ERROR(ctx, TOKEN_MINUS);
-                MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
-            } else {
-                MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
+                if (ctx->entry->token == TOKEN_MINUS) {
+                    MATCH_OR_ERROR(ctx, TOKEN_MINUS);
+                    MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
+                } else {
+                    MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
+                }
             }
         }
+
+        MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
+        return 0;
     }
 
-    MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
-    return 0;
+    syntatic_report_unexpected_token_error(ctx);
+    return -1;
 }
 
 static int
