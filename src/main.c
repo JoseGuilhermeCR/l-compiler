@@ -21,7 +21,7 @@
         assert(0);                                                             \
     } while (0)
 #else
-#define UNREACHABLE()
+#define UNREACHABLE() __builtin_unreachable()
 #endif
 
 enum token
@@ -689,6 +689,64 @@ lexer_print_error(const struct lexer *lexer)
     }
 }
 
+static const char *
+get_lexeme_from_token(enum token token)
+{
+    switch (token) {
+        case TOKEN_LOGICAL_AND:
+            return "&&";
+        case TOKEN_LOGICAL_OR:
+            return "||";
+        case TOKEN_NOT_EQUAL:
+            return "!=";
+        case TOKEN_NOT:
+            return "!";
+        case TOKEN_ASSIGNMENT:
+            return ":=";
+        case TOKEN_EQUAL:
+            return "=";
+        case TOKEN_COMMA:
+            return ",";
+        case TOKEN_PLUS:
+            return "+";
+        case TOKEN_MINUS:
+            return "-";
+        case TOKEN_TIMES:
+            return "*";
+        case TOKEN_SEMICOLON:
+            return ";";
+        case TOKEN_OPENING_PAREN:
+            return "(";
+        case TOKEN_CLOSING_PAREN:
+            return ")";
+        case TOKEN_OPENING_SQUARE_BRACKET:
+            return "[";
+        case TOKEN_CLOSING_SQUARE_BRACKET:
+            return "]";
+        case TOKEN_OPENING_CURLY_BRACKET:
+            return "{";
+        case TOKEN_CLOSING_CURLY_BRACKET:
+            return "}";
+        case TOKEN_LESS:
+            return "<";
+        case TOKEN_LESS_EQUAL:
+            return "<=";
+        case TOKEN_GREATER:
+            return ">";
+        case TOKEN_GREATER_EQUAL:
+            return ">=";
+        case TOKEN_DIVISION:
+            return "/";
+        default:
+            // Tokens that may have more than
+            // one lexeme never should've gotten
+            // here.
+            UNREACHABLE();
+    }
+
+    UNREACHABLE();
+}
+
 // Syntatic Stuff
 
 enum syntatic_result
@@ -708,7 +766,15 @@ static void
 syntatic_report_unexpected_token_error(struct syntatic_ctx *ctx)
 {
     fprintf(ERR_STREAM, "%i\n", ctx->lexer->line);
-    fprintf(ERR_STREAM, "token nao esperado [%s].\n", ctx->entry->lexeme.buffer);
+    if (ctx->entry->lexeme.size) {
+        fprintf(ERR_STREAM,
+                "token nao esperado [%s].\n",
+                ctx->entry->lexeme.buffer);
+    } else {
+        fprintf(ERR_STREAM,
+                "token nao esperado [%s].\n",
+                get_lexeme_from_token(ctx->entry->token));
+    }
 }
 
 static enum syntatic_result
