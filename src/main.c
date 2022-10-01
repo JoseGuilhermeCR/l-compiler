@@ -636,8 +636,8 @@ lexer_get_next_token(struct lexer *lexer, struct lexical_entry *entry)
                 }
                 break;
             case LEXER_STATE_START_FLOAT:
-                lexeme_append_or_error(&lexer->lexeme, c);
                 if (isdigit(c)) {
+                    lexeme_append_or_error(&lexer->lexeme, c);
                     lexer->state = LEXER_STATE_FLOAT;
                 } else {
                     lexer->error = LEXER_ERROR_INVALID_LEXEME;
@@ -1276,7 +1276,7 @@ main(void)
         struct syntatic_ctx syntatic_ctx;
         syntatic_init(&syntatic_ctx, &lexer, &entry);
         if (syntatic_start(&syntatic_ctx) == 0) {
-            fprintf(ERR_STREAM, "%i linha compiladas.\n", lexer.line);
+            fprintf(ERR_STREAM, "%i linhas compiladas.\n", lexer.line);
         }
     } else {
         lexer_print_error(&lexer);
