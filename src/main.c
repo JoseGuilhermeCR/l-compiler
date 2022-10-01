@@ -15,7 +15,7 @@
 #define MAX_FILE_SIZE (32U * 1024U)
 #define MAX_LEXEME_SIZE (32U)
 
-#define REPORT_SYNTATIC_ERROR()                                                       \
+#define REPORT_SYNTATIC_ERROR()                                                \
     do {                                                                       \
         fprintf(ERR_STREAM,                                                    \
                 "SYNTATIC_ERROR FUNCTION %s LINE %i\n",                        \
@@ -24,7 +24,10 @@
     } while (0)
 
 #if defined(ASSERT_UNREACHABLE)
-#define UNREACHABLE() do { assert(0); } while (0)
+#define UNREACHABLE()                                                          \
+    do {                                                                       \
+        assert(0);                                                             \
+    } while (0)
 #else
 #define UNREACHABLE()
 #endif
@@ -729,34 +732,34 @@ syntatic_match_token(struct syntatic_ctx *ctx, enum token token)
     return SYNTATIC_ERROR;
 }
 
+#define MATCH_OR_ERROR(ctx_ptr, tok)                                           \
+    do {                                                                       \
+        enum syntatic_result _sr = syntatic_match_token((ctx_ptr), tok);       \
+        if (_sr != SYNTATIC_OK)                                                \
+            return -1;                                                         \
+    } while (0)
+
 static int
 syntatic_decl_var(struct syntatic_ctx *ctx)
 {
-    if (syntatic_match_token(ctx, TOKEN_IDENTIFIER) != SYNTATIC_OK)
-        return -1;
+    MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
 
     // TODO: If not ASSIGNMENT, nor COMMA nor ; ERROR.
 
     // Handle possible assignment for the first declared variable.
     if (ctx->entry->token == TOKEN_ASSIGNMENT) {
-        if (syntatic_match_token(ctx, TOKEN_ASSIGNMENT) != SYNTATIC_OK)
-            return -1;
+        MATCH_OR_ERROR(ctx, TOKEN_ASSIGNMENT);
 
         if (ctx->entry->token == TOKEN_MINUS) {
-            if (syntatic_match_token(ctx, TOKEN_MINUS) != SYNTATIC_OK)
-                return -1;
-
-            if (syntatic_match_token(ctx, TOKEN_CONSTANT) != SYNTATIC_OK)
-                return -1;
-        } else if (syntatic_match_token(ctx, TOKEN_CONSTANT) !=
-                   SYNTATIC_OK) {
-            return -1;
+            MATCH_OR_ERROR(ctx, TOKEN_MINUS);
+            MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
+        } else {
+            MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
         }
     }
 
     if (ctx->entry->token == TOKEN_SEMICOLON) {
-        if (syntatic_match_token(ctx, TOKEN_SEMICOLON) != SYNTATIC_OK)
-            return -1;
+        MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
         puts("decl_var_success");
         return 0;
     } else if (ctx->entry->token != TOKEN_COMMA) {
@@ -766,35 +769,23 @@ syntatic_decl_var(struct syntatic_ctx *ctx)
 
     // Handle multiple variable declaration.
     while (ctx->entry->token == TOKEN_COMMA) {
-        if (syntatic_match_token(ctx, TOKEN_COMMA) != SYNTATIC_OK)
-            return -1;
-
-        if (syntatic_match_token(ctx, TOKEN_IDENTIFIER) != SYNTATIC_OK)
-            return -1;
+        MATCH_OR_ERROR(ctx, TOKEN_COMMA);
+        MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
 
         // Handle possible assignment for variable.
         if (ctx->entry->token == TOKEN_ASSIGNMENT) {
-            if (syntatic_match_token(ctx, TOKEN_ASSIGNMENT) !=
-                SYNTATIC_OK)
-                return -1;
+            MATCH_OR_ERROR(ctx, TOKEN_ASSIGNMENT);
 
             if (ctx->entry->token == TOKEN_MINUS) {
-                if (syntatic_match_token(ctx, TOKEN_MINUS) != SYNTATIC_OK)
-                    return -1;
-
-                if (syntatic_match_token(ctx, TOKEN_CONSTANT) !=
-                    SYNTATIC_OK)
-                    return -1;
-            } else if (syntatic_match_token(ctx, TOKEN_CONSTANT) !=
-                       SYNTATIC_OK) {
-                return -1;
+                MATCH_OR_ERROR(ctx, TOKEN_MINUS);
+                MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
+            } else {
+                MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
             }
         }
     }
 
-    if (syntatic_match_token(ctx, TOKEN_SEMICOLON) != SYNTATIC_OK)
-        return -1;
-
+    MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
     puts("decl_var_success");
     return 0;
 }
@@ -802,25 +793,17 @@ syntatic_decl_var(struct syntatic_ctx *ctx)
 static int
 syntatic_decl_const(struct syntatic_ctx *ctx)
 {
-    if (syntatic_match_token(ctx, TOKEN_IDENTIFIER) != SYNTATIC_OK)
-        return -1;
-
-    if (syntatic_match_token(ctx, TOKEN_EQUAL) != SYNTATIC_OK)
-        return -1;
+    MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
+    MATCH_OR_ERROR(ctx, TOKEN_EQUAL);
 
     if (ctx->entry->token == TOKEN_MINUS) {
-        if (syntatic_match_token(ctx, TOKEN_MINUS) != SYNTATIC_OK)
-            return -1;
-
-        if (syntatic_match_token(ctx, TOKEN_CONSTANT) != SYNTATIC_OK)
-            return -1;
-    } else if (syntatic_match_token(ctx, TOKEN_CONSTANT) != SYNTATIC_OK) {
-        return -1;
+        MATCH_OR_ERROR(ctx, TOKEN_MINUS);
+        MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
+    } else {
+        MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
     }
 
-    if (syntatic_match_token(ctx, TOKEN_SEMICOLON) != SYNTATIC_OK)
-        return -1;
-
+    MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
     puts("decl_const_success");
     return 0;
 }
@@ -828,18 +811,10 @@ syntatic_decl_const(struct syntatic_ctx *ctx)
 static int
 syntatic_read(struct syntatic_ctx *ctx)
 {
-    if (syntatic_match_token(ctx, TOKEN_OPENING_PAREN) != SYNTATIC_OK)
-        return -1;
-
-    if (syntatic_match_token(ctx, TOKEN_IDENTIFIER) != SYNTATIC_OK)
-        return -1;
-
-    if (syntatic_match_token(ctx, TOKEN_CLOSING_PAREN) != SYNTATIC_OK)
-        return -1;
-
-    if (syntatic_match_token(ctx, TOKEN_SEMICOLON) != SYNTATIC_OK)
-        return -1;
-
+    MATCH_OR_ERROR(ctx, TOKEN_OPENING_PAREN);
+    MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
+    MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);
+    MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
     puts("readln_success");
     return 0;
 }
@@ -874,9 +849,7 @@ syntatic_f(struct syntatic_ctx *ctx)
     }
 
     enum token tok = ctx->entry->token;
-    if (syntatic_match_token(ctx, tok) != SYNTATIC_OK)
-        return -1;
-
+    MATCH_OR_ERROR(ctx, tok);
     switch (tok) {
         case TOKEN_NOT:
             if (syntatic_f(ctx) < 0)
@@ -885,33 +858,23 @@ syntatic_f(struct syntatic_ctx *ctx)
         case TOKEN_OPENING_PAREN:
             if (syntatic_exp(ctx) < 0)
                 return -1;
-            if (syntatic_match_token(ctx, TOKEN_CLOSING_PAREN) !=
-                SYNTATIC_OK)
-                return -1;
+            MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);
             break;
         case TOKEN_INT:
         case TOKEN_FLOAT:
-            if (syntatic_match_token(ctx, TOKEN_OPENING_PAREN) !=
-                SYNTATIC_OK)
-                return -1;
+            MATCH_OR_ERROR(ctx, TOKEN_OPENING_PAREN);
             if (syntatic_exp(ctx) < 0)
                 return -1;
-            if (syntatic_match_token(ctx, TOKEN_CLOSING_PAREN) !=
-                SYNTATIC_OK)
-                return -1;
+            MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);
             break;
         case TOKEN_CONSTANT:
             break;
         case TOKEN_IDENTIFIER:
             if (ctx->entry->token == TOKEN_OPENING_SQUARE_BRACKET) {
-                if (syntatic_match_token(ctx, TOKEN_OPENING_SQUARE_BRACKET) !=
-                    SYNTATIC_OK)
-                    return -1;
+                MATCH_OR_ERROR(ctx, TOKEN_OPENING_SQUARE_BRACKET);
                 if (syntatic_exp(ctx) < 0)
                     return -1;
-                if (syntatic_match_token(ctx, TOKEN_CLOSING_SQUARE_BRACKET) !=
-                    SYNTATIC_OK)
-                    return -1;
+                MATCH_OR_ERROR(ctx, TOKEN_CLOSING_SQUARE_BRACKET);
             }
             break;
         default:
@@ -931,9 +894,8 @@ syntatic_t(struct syntatic_ctx *ctx)
     enum token tok = ctx->entry->token;
     while (tok == TOKEN_TIMES || tok == TOKEN_LOGICAL_AND || tok == TOKEN_MOD ||
            tok == TOKEN_DIV || tok == TOKEN_DIVISION) {
-        if (syntatic_match_token(ctx, tok) != SYNTATIC_OK)
-            return -1;
 
+        MATCH_OR_ERROR(ctx, tok);
         if (syntatic_f(ctx) < 0)
             return -1;
 
@@ -949,8 +911,7 @@ syntatic_exps(struct syntatic_ctx *ctx)
 {
     enum token tok = ctx->entry->token;
     if (tok == TOKEN_MINUS || tok == TOKEN_PLUS) {
-        if (syntatic_match_token(ctx, ctx->entry->token) != SYNTATIC_OK)
-            return -1;
+        MATCH_OR_ERROR(ctx, tok);
     }
 
     if (syntatic_t(ctx) < 0)
@@ -958,8 +919,7 @@ syntatic_exps(struct syntatic_ctx *ctx)
 
     tok = ctx->entry->token;
     while (tok == TOKEN_PLUS || tok == TOKEN_MINUS || tok == TOKEN_LOGICAL_OR) {
-        if (syntatic_match_token(ctx, tok) != SYNTATIC_OK)
-            return -1;
+        MATCH_OR_ERROR(ctx, tok);
 
         if (syntatic_t(ctx) < 0)
             return -1;
@@ -984,10 +944,7 @@ syntatic_exp(struct syntatic_ctx *ctx)
         case TOKEN_LESS_EQUAL:
         case TOKEN_GREATER:
         case TOKEN_GREATER_EQUAL:
-            if (syntatic_match_token(ctx, ctx->entry->token) !=
-                SYNTATIC_OK)
-                return -1;
-
+            MATCH_OR_ERROR(ctx, ctx->entry->token);
             if (syntatic_exps(ctx) < 0)
                 return -1;
             break;
@@ -1002,25 +959,17 @@ syntatic_exp(struct syntatic_ctx *ctx)
 static int
 syntatic_write(struct syntatic_ctx *ctx)
 {
-    if (syntatic_match_token(ctx, TOKEN_OPENING_PAREN) != SYNTATIC_OK)
-        return -1;
-
+    MATCH_OR_ERROR(ctx, TOKEN_OPENING_PAREN);
     if (syntatic_exp(ctx) < 0)
         return -1;
-
     while (ctx->entry->token == TOKEN_COMMA) {
-        if (syntatic_match_token(ctx, TOKEN_COMMA) != SYNTATIC_OK)
-            return -1;
+        MATCH_OR_ERROR(ctx, TOKEN_COMMA);
         if (syntatic_exp(ctx) < 0)
             return -1;
     }
 
-    if (syntatic_match_token(ctx, TOKEN_CLOSING_PAREN) != SYNTATIC_OK)
-        return -1;
-
-    if (syntatic_match_token(ctx, TOKEN_SEMICOLON) != SYNTATIC_OK)
-        return -1;
-
+    MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);
+    MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
     puts("write_success");
     return 0;
 }
@@ -1029,27 +978,16 @@ static int
 syntatic_attr(struct syntatic_ctx *ctx)
 {
     if (ctx->entry->token == TOKEN_OPENING_SQUARE_BRACKET) {
-        if (syntatic_match_token(ctx, TOKEN_OPENING_SQUARE_BRACKET) !=
-            SYNTATIC_OK)
-            return -1;
-
+        MATCH_OR_ERROR(ctx, TOKEN_OPENING_SQUARE_BRACKET);
         if (syntatic_exp(ctx) < 0)
             return -1;
-
-        if (syntatic_match_token(ctx, TOKEN_CLOSING_SQUARE_BRACKET) !=
-            SYNTATIC_OK)
-            return -1;
+        MATCH_OR_ERROR(ctx, TOKEN_CLOSING_SQUARE_BRACKET);
     }
 
-    if (syntatic_match_token(ctx, TOKEN_ASSIGNMENT) != SYNTATIC_OK)
-        return -1;
-
+    MATCH_OR_ERROR(ctx, TOKEN_ASSIGNMENT);
     if (syntatic_exp(ctx) < 0)
         return -1;
-
-    if (syntatic_match_token(ctx, TOKEN_SEMICOLON) != SYNTATIC_OK)
-        return -1;
-
+    MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
     puts("attr_ok");
     return 0;
 }
@@ -1057,15 +995,10 @@ syntatic_attr(struct syntatic_ctx *ctx)
 static int
 syntatic_paren_exp(struct syntatic_ctx *ctx)
 {
-    if (syntatic_match_token(ctx, TOKEN_OPENING_PAREN) != SYNTATIC_OK)
-        return -1;
-
+    MATCH_OR_ERROR(ctx, TOKEN_OPENING_PAREN);
     if (syntatic_exp(ctx) < 0)
         return -1;
-
-    if (syntatic_match_token(ctx, TOKEN_CLOSING_PAREN) != SYNTATIC_OK)
-        return -1;
-
+    MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);
     return 0;
 }
 
@@ -1095,8 +1028,7 @@ static int
 syntatic_command(struct syntatic_ctx *ctx)
 {
     enum token tok = ctx->entry->token;
-    if (syntatic_match_token(ctx, tok) != SYNTATIC_OK)
-        return -1;
+    MATCH_OR_ERROR(ctx, tok);
 
     switch (tok) {
         case TOKEN_SEMICOLON:
@@ -1137,17 +1069,14 @@ syntatic_while(struct syntatic_ctx *ctx)
         puts("while_success");
         return 0;
     } else if (ctx->entry->token == TOKEN_OPENING_CURLY_BRACKET) {
-        if (syntatic_match_token(ctx, TOKEN_OPENING_CURLY_BRACKET) != SYNTATIC_OK)
-            return -1;
+        MATCH_OR_ERROR(ctx, TOKEN_OPENING_CURLY_BRACKET);
 
         while (syntatic_is_first_of_command(ctx)) {
             if (syntatic_command(ctx) < 0)
                 return -1;
         }
 
-        if (syntatic_match_token(ctx, TOKEN_CLOSING_CURLY_BRACKET) != SYNTATIC_OK)
-            return -1;
-
+        MATCH_OR_ERROR(ctx, TOKEN_CLOSING_CURLY_BRACKET);
         puts("while_bracket_success");
         return 0;
     }
@@ -1187,8 +1116,7 @@ syntatic_start(struct syntatic_ctx *ctx)
         } else {
             // Handle DECL_VAR and DECL_CONST.
             enum token tok = ctx->entry->token;
-            if (syntatic_match_token(ctx, tok) != SYNTATIC_OK)
-                return -1;
+            MATCH_OR_ERROR(ctx, tok);
 
             switch (tok) {
                 case TOKEN_INT:
