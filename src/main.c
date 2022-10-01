@@ -470,7 +470,6 @@ lexer_get_next_token(struct lexer *lexer, struct lexical_entry *entry)
                     entry->token = TOKEN_LOGICAL_AND;
                     return LEXER_RESULT_FOUND;
                 } else {
-                    lexeme_append_or_error(&lexer->lexeme, c);
                     lexer->error = LEXER_ERROR_INVALID_LEXEME;
                     return LEXER_RESULT_ERROR;
                 }
@@ -480,7 +479,6 @@ lexer_get_next_token(struct lexer *lexer, struct lexical_entry *entry)
                     entry->token = TOKEN_LOGICAL_OR;
                     return LEXER_RESULT_FOUND;
                 } else {
-                    lexeme_append_or_error(&lexer->lexeme, c);
                     lexer->error = LEXER_ERROR_INVALID_LEXEME;
                     return LEXER_RESULT_ERROR;
                 }
