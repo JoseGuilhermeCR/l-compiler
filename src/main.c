@@ -1217,6 +1217,7 @@ syntatic_init(struct syntatic_ctx *ctx,
 {
     ctx->lexer = lexer;
     ctx->entry = entry;
+    ctx->found_last_token = 0;
 }
 
 // Main Stuff
@@ -1274,7 +1275,11 @@ main(void)
     if (result == LEXER_RESULT_FOUND) {
         struct syntatic_ctx syntatic_ctx;
         syntatic_init(&syntatic_ctx, &lexer, &entry);
-        syntatic_start(&syntatic_ctx);
+        if (syntatic_start(&syntatic_ctx) == 0) {
+            fprintf(ERR_STREAM, "%i linha compiladas.\n", lexer.line);
+        }
+    } else {
+        lexer_print_error(&lexer);
     }
 
     symbol_table_destroy(&table);
