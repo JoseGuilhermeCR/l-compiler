@@ -1167,6 +1167,14 @@ syntatic_if(struct syntatic_ctx *ctx)
     if (syntatic_is_first_of_command(ctx)) {
         if (syntatic_command(ctx) < 0)
             return -1;
+
+        if (ctx->entry->token == TOKEN_ELSE) {
+            MATCH_OR_ERROR(ctx, TOKEN_ELSE);
+            if (syntatic_command(ctx) < 0)
+                    return -1;
+        }
+
+        return 0;
     } else if (ctx->entry->token == TOKEN_OPENING_CURLY_BRACKET) {
         MATCH_OR_ERROR(ctx, TOKEN_OPENING_CURLY_BRACKET);
 
@@ -1176,16 +1184,9 @@ syntatic_if(struct syntatic_ctx *ctx)
         }
 
         MATCH_OR_ERROR(ctx, TOKEN_CLOSING_CURLY_BRACKET);
-    }
 
-    if (ctx->entry->token == TOKEN_ELSE) {
-        MATCH_OR_ERROR(ctx, TOKEN_ELSE);
-
-        if (syntatic_is_first_of_command(ctx)) {
-            if (syntatic_command(ctx) < 0)
-                return -1;
-            return 0;
-        } else if (ctx->entry->token == TOKEN_OPENING_CURLY_BRACKET) {
+        if (ctx->entry->token == TOKEN_ELSE) {
+            MATCH_OR_ERROR(ctx, TOKEN_ELSE);
             MATCH_OR_ERROR(ctx, TOKEN_OPENING_CURLY_BRACKET);
 
             while (syntatic_is_first_of_command(ctx)) {
@@ -1194,12 +1195,13 @@ syntatic_if(struct syntatic_ctx *ctx)
             }
 
             MATCH_OR_ERROR(ctx, TOKEN_CLOSING_CURLY_BRACKET);
-            return 0;
         }
+
+        return 0;
     }
 
     syntatic_report_unexpected_token_error(ctx);
-    return -1;
+    return 1;
 }
 
 static int
@@ -1253,6 +1255,11 @@ syntatic_start(struct syntatic_ctx *ctx)
                     break;
             }
         }
+    }
+
+    if (!ctx->found_last_token) {
+        syntatic_report_unexpected_token_error(ctx);
+        return -1;
     }
 
     return 0;
