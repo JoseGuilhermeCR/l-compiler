@@ -568,6 +568,9 @@ lexer_get_next_token(struct lexer *lexer, struct lexical_entry *entry)
                 break;
             case LEXER_STATE_STRING_CONSTANT:
                 if (c == '\n') {
+                    // Don't consider a \n inside a string...
+                    // revert the line number and cause an error.
+                    --lexer->line;
                     lexer->error = LEXER_ERROR_INVALID_LEXEME;
                     return LEXER_RESULT_ERROR;
                 }
