@@ -1093,6 +1093,9 @@ static int
 syntatic_while(struct syntatic_ctx *ctx);
 
 static int
+syntatic_if(struct syntatic_ctx *ctx);
+
+static int
 syntatic_command(struct syntatic_ctx *ctx)
 {
     enum token tok = ctx->entry->token;
@@ -1116,6 +1119,10 @@ syntatic_command(struct syntatic_ctx *ctx)
             break;
         case TOKEN_WHILE:
             if (syntatic_while(ctx) < 0)
+                return -1;
+            break;
+        case TOKEN_IF:
+            if (syntatic_if(ctx) < 0)
                 return -1;
             break;
         default:
@@ -1145,6 +1152,50 @@ syntatic_while(struct syntatic_ctx *ctx)
 
         MATCH_OR_ERROR(ctx, TOKEN_CLOSING_CURLY_BRACKET);
         return 0;
+    }
+
+    syntatic_report_unexpected_token_error(ctx);
+    return -1;
+}
+
+static int
+syntatic_if(struct syntatic_ctx *ctx)
+{
+    if (syntatic_paren_exp(ctx) < 0)
+        return -1;
+
+    if (syntatic_is_first_of_command(ctx)) {
+        if (syntatic_command(ctx) < 0)
+            return -1;
+    } else if (ctx->entry->token == TOKEN_OPENING_CURLY_BRACKET) {
+        MATCH_OR_ERROR(ctx, TOKEN_OPENING_CURLY_BRACKET);
+
+        while (syntatic_is_first_of_command(ctx)) {
+            if (syntatic_command(ctx) < 0)
+                return -1;
+        }
+
+        MATCH_OR_ERROR(ctx, TOKEN_CLOSING_CURLY_BRACKET);
+    }
+
+    if (ctx->entry->token == TOKEN_ELSE) {
+        MATCH_OR_ERROR(ctx, TOKEN_ELSE);
+
+        if (syntatic_is_first_of_command(ctx)) {
+            if (syntatic_command(ctx) < 0)
+                return -1;
+            return 0;
+        } else if (ctx->entry->token == TOKEN_OPENING_CURLY_BRACKET) {
+            MATCH_OR_ERROR(ctx, TOKEN_OPENING_CURLY_BRACKET);
+
+            while (syntatic_is_first_of_command(ctx)) {
+                if (syntatic_command(ctx) < 0)
+                    return -1;
+            }
+
+            MATCH_OR_ERROR(ctx, TOKEN_CLOSING_CURLY_BRACKET);
+            return 0;
+        }
     }
 
     syntatic_report_unexpected_token_error(ctx);
