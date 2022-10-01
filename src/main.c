@@ -777,12 +777,18 @@ syntatic_report_unexpected_token_error(struct syntatic_ctx *ctx)
     }
 }
 
+static void
+syntatic_report_unexpected_eof_error(struct syntatic_ctx *ctx)
+{
+    fprintf(ERR_STREAM, "%i\n", ctx->lexer->line);
+    fputs("fim de arquivo nao esperado.\n", ERR_STREAM);
+}
+
 static enum syntatic_result
 syntatic_match_token(struct syntatic_ctx *ctx, enum token token)
 {
     if (ctx->found_last_token) {
-        fprintf(ERR_STREAM, "%i\n", ctx->lexer->line);
-        fputs("fim de arquivo nao esperado.\n", ERR_STREAM);
+        syntatic_report_unexpected_eof_error(ctx);
         return SYNTATIC_ERROR;
     }
 
@@ -909,6 +915,11 @@ syntatic_exp(struct syntatic_ctx *ctx);
 static int
 syntatic_f(struct syntatic_ctx *ctx)
 {
+    if (ctx->found_last_token) {
+        syntatic_report_unexpected_eof_error(ctx);
+        return -1;
+    }
+
     if (!syntatic_is_first_of_f(ctx)) {
         syntatic_report_unexpected_token_error(ctx);
         return -1;
