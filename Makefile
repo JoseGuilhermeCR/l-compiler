@@ -10,20 +10,15 @@ C := gcc
 C_FLAGS := -Wall -Wextra -Wshadow
 C_FLAGS += -std=gnu11
 
-ifdef DEBUG_SYMBOLS
-C_FLAGS += -ggdb3
-endif
-
-ifdef OPTIMIZATION_LEVEL
-C_FLAGS += -O$(OPTIMIZATION_LEVEL)
-endif
-
 INCLUDE := -Iinclude
 DEFINES :=
 LINKER_FLAGS := 
 
-ifdef ASSERT_UNREACHABLE
+ifdef DEBUG
+C_FLAGS += -O0 -ggdb3
 DEFINES += -DASSERT_UNREACHABLE
+else
+C_FLAGS += -O2
 endif
 
 %.o: %.c
