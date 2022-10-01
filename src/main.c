@@ -15,14 +15,6 @@
 #define MAX_FILE_SIZE (32U * 1024U)
 #define MAX_LEXEME_SIZE (32U)
 
-#define REPORT_SYNTATIC_ERROR()                                                \
-    do {                                                                       \
-        fprintf(ERR_STREAM,                                                    \
-                "SYNTATIC_ERROR FUNCTION %s LINE %i\n",                        \
-                __func__,                                                      \
-                __LINE__);                                                     \
-    } while (0)
-
 #if defined(ASSERT_UNREACHABLE)
 #define UNREACHABLE()                                                          \
     do {                                                                       \
@@ -702,7 +694,6 @@ lexer_print_error(const struct lexer *lexer)
 enum syntatic_result
 {
     SYNTATIC_OK,
-    SYNTATIC_END,
     SYNTATIC_ERROR,
 };
 
@@ -710,25 +701,39 @@ struct syntatic_ctx
 {
     struct lexer *lexer;
     struct lexical_entry *entry;
+    uint8_t found_last_token;
 };
+
+static void
+syntatic_report_unexpected_token_error(struct syntatic_ctx *ctx)
+{
+    fprintf(ERR_STREAM, "%i\n", ctx->lexer->line);
+    fprintf(ERR_STREAM, "token nao esperado [%s].\n", ctx->entry->lexeme.buffer);
+}
 
 static enum syntatic_result
 syntatic_match_token(struct syntatic_ctx *ctx, enum token token)
 {
+    if (ctx->found_last_token) {
+        fprintf(ERR_STREAM, "%i\n", ctx->lexer->line);
+        fputs("fim de arquivo nao esperado.\n", ERR_STREAM);
+        return SYNTATIC_ERROR;
+    }
+
     if (ctx->entry->token == token) {
         enum lexer_result result = lexer_get_next_token(ctx->lexer, ctx->entry);
         if (result == LEXER_RESULT_ERROR) {
             lexer_print_error(ctx->lexer);
             return SYNTATIC_ERROR;
         } else if (result == LEXER_RESULT_EMPTY) {
-            return SYNTATIC_END;
+            ctx->found_last_token = 1;
         }
 
         return SYNTATIC_OK;
     }
 
     // TODO(Jose): Print a syntatic error.
-    REPORT_SYNTATIC_ERROR();
+    syntatic_report_unexpected_token_error(ctx);
     return SYNTATIC_ERROR;
 }
 
@@ -760,10 +765,8 @@ syntatic_decl_var(struct syntatic_ctx *ctx)
 
     if (ctx->entry->token == TOKEN_SEMICOLON) {
         MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
-        puts("decl_var_success");
         return 0;
     } else if (ctx->entry->token != TOKEN_COMMA) {
-        puts("not semicolon nor comma");
         return -1;
     }
 
@@ -786,7 +789,6 @@ syntatic_decl_var(struct syntatic_ctx *ctx)
     }
 
     MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
-    puts("decl_var_success");
     return 0;
 }
 
@@ -804,7 +806,6 @@ syntatic_decl_const(struct syntatic_ctx *ctx)
     }
 
     MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
-    puts("decl_const_success");
     return 0;
 }
 
@@ -815,7 +816,6 @@ syntatic_read(struct syntatic_ctx *ctx)
     MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
     MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);
     MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
-    puts("readln_success");
     return 0;
 }
 
@@ -844,7 +844,7 @@ static int
 syntatic_f(struct syntatic_ctx *ctx)
 {
     if (!syntatic_is_first_of_f(ctx)) {
-        REPORT_SYNTATIC_ERROR();
+        syntatic_report_unexpected_token_error(ctx);
         return -1;
     }
 
@@ -881,7 +881,6 @@ syntatic_f(struct syntatic_ctx *ctx)
             UNREACHABLE();
     }
 
-    puts("f_success");
     return 0;
 }
 
@@ -902,7 +901,6 @@ syntatic_t(struct syntatic_ctx *ctx)
         tok = ctx->entry->token;
     }
 
-    puts("t_success");
     return 0;
 }
 
@@ -927,7 +925,6 @@ syntatic_exps(struct syntatic_ctx *ctx)
         tok = ctx->entry->token;
     }
 
-    puts("exps_success");
     return 0;
 }
 
@@ -952,7 +949,6 @@ syntatic_exp(struct syntatic_ctx *ctx)
             break;
     }
 
-    puts("exp_success");
     return 0;
 }
 
@@ -970,7 +966,6 @@ syntatic_write(struct syntatic_ctx *ctx)
 
     MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);
     MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
-    puts("write_success");
     return 0;
 }
 
@@ -988,7 +983,6 @@ syntatic_attr(struct syntatic_ctx *ctx)
     if (syntatic_exp(ctx) < 0)
         return -1;
     MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
-    puts("attr_ok");
     return 0;
 }
 
@@ -1066,7 +1060,6 @@ syntatic_while(struct syntatic_ctx *ctx)
     if (syntatic_is_first_of_command(ctx)) {
         if (syntatic_command(ctx) < 0)
             return -1;
-        puts("while_success");
         return 0;
     } else if (ctx->entry->token == TOKEN_OPENING_CURLY_BRACKET) {
         MATCH_OR_ERROR(ctx, TOKEN_OPENING_CURLY_BRACKET);
@@ -1077,11 +1070,10 @@ syntatic_while(struct syntatic_ctx *ctx)
         }
 
         MATCH_OR_ERROR(ctx, TOKEN_CLOSING_CURLY_BRACKET);
-        puts("while_bracket_success");
         return 0;
     }
 
-    REPORT_SYNTATIC_ERROR();
+    syntatic_report_unexpected_token_error(ctx);
     return -1;
 }
 
@@ -1109,7 +1101,7 @@ syntatic_is_first_of_s(struct syntatic_ctx *ctx)
 static int
 syntatic_start(struct syntatic_ctx *ctx)
 {
-    while (syntatic_is_first_of_s(ctx)) {
+    while (!ctx->found_last_token && syntatic_is_first_of_s(ctx)) {
         if (syntatic_is_first_of_command(ctx)) {
             if (syntatic_command(ctx) < 0)
                 return -1;
@@ -1132,7 +1124,7 @@ syntatic_start(struct syntatic_ctx *ctx)
                         return -1;
                     break;
                 default:
-                    REPORT_SYNTATIC_ERROR();
+                    syntatic_report_unexpected_token_error(ctx);
                     break;
             }
         }
