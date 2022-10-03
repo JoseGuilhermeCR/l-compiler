@@ -201,6 +201,8 @@ symbol_table_populate_with_keywords(struct symbol_table *table)
     assert(symbol_table_insert(table, "writeln", TOKEN_WRITELN) == 0);
     assert(symbol_table_insert(table, "mod", TOKEN_MOD) == 0);
     assert(symbol_table_insert(table, "boolean", TOKEN_BOOLEAN) == 0);
+    assert(symbol_table_insert(table, "true", TOKEN_CONSTANT) == 0);
+    assert(symbol_table_insert(table, "false", TOKEN_CONSTANT) == 0);
 }
 
 static void
