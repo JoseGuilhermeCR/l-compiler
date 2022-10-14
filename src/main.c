@@ -5,24 +5,36 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
+
+static struct file file;
+static struct lexer lexer;
+static struct symbol_table table;
+
+static void
+cleanup(void)
+{
+    symbol_table_destroy(&table);
+    destroy_stdin_file(&file);
+}
 
 int
 main(void)
 {
-    // static volatile uint8_t _waiting_for_debug = 1;
+#if defined(WAIT_ATTACH)
+    static volatile uint8_t _waiting_for_debug = 1;
 
-    // while (_waiting_for_debug)
-    //     ;
+    while (_waiting_for_debug)
+        ;
+#endif
 
-    struct file file;
+    assert(atexit(cleanup) == 0);
+
     assert(read_file_from_stdin(&file, MAX_FILE_SIZE) == 0);
 
-    struct symbol_table table;
     assert(symbol_table_create(&table, 64) == 0);
-
     symbol_table_populate_with_keywords(&table);
 
-    struct lexer lexer;
     lexer_init(&lexer, &file, &table);
 
     struct lexical_entry entry;
@@ -37,7 +49,5 @@ main(void)
         lexer_print_error(&lexer);
     }
 
-    symbol_table_destroy(&table);
-    destroy_stdin_file(&file);
     return 0;
 }
