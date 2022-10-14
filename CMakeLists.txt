@@ -1,4 +1,7 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.16)
+
+set(CMAKE_C_STANDARD 17)
+set(CMAKE_C_STANDARD_REQUIRED True)
 
 project(l-compiler LANGUAGES C)
 
@@ -18,7 +21,11 @@ add_executable(l-compiler
 target_include_directories(l-compiler PRIVATE "include/")
 
 target_compile_definitions(l-compiler PRIVATE
-	"_CRT_SECURE_NO_WARNINGS"
 	"MAX_FILE_SIZE=(32U*1024U)"
 	"MAX_LEXEME_SIZE=(32U)"
 	"ERR_STREAM=stderr")
+
+if (MSVC)
+target_compile_definitions(l-compiler PRIVATE "_CRT_SECURE_NO_WARNINGS")
+target_compile_options(l-compiler PRIVATE "/W4")
+endif()
