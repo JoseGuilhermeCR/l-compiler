@@ -144,8 +144,6 @@ syntatic_is_first_of_f(struct syntatic_ctx *ctx)
         default:
             return 0;
     }
-
-    UNREACHABLE();
 }
 
 static int
@@ -327,8 +325,6 @@ syntatic_is_first_of_command(struct syntatic_ctx *ctx)
         default:
             return 0;
     }
-
-    UNREACHABLE();
 }
 
 static int
@@ -463,8 +459,6 @@ syntatic_is_first_of_s(struct syntatic_ctx *ctx)
         default:
             return 0;
     }
-
-    UNREACHABLE();
 }
 
 void

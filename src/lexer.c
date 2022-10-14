@@ -447,12 +447,11 @@ get_lexeme_from_token(enum token token)
             return ">=";
         case TOKEN_DIVISION:
             return "/";
-        default:
-            // Tokens that may have more than
-            // one lexeme never should've gotten
-            // here.
-            UNREACHABLE();
     }
 
+    // Tokens that may have more than
+    // one lexeme never should've gotten
+    // here.
     UNREACHABLE();
+    return "NULL";
 }

@@ -96,11 +96,7 @@ symbol_table_insert(struct symbol_table *table,
         next = next->next;
     }
 
-#if !defined(VERDE)
     next = malloc(sizeof(*next));
-#else
-    next = (struct symbol *)malloc(sizeof(*next));
-#endif
     assert(next && "failed to allocate memory for new symbol.");
 
     strncpy(next->lexeme, lexeme, MAX_LEXEME_SIZE);
