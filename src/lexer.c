@@ -47,9 +47,9 @@ lexeme_append_or_error(struct lexeme *l, char c)
 static int
 is_in_alphabet(char c)
 {
-    if (isalnum(c) || c == EOF)
+    if (isalnum((unsigned char)c) || c == EOF)
         return 1;
-    const char *extra = " _.,;:()[]{}+*-\"'/|@&%!?><=\n\r";
+    const char *extra = " _.,;:()[]{}+*-'/|@&%!?><=\"\n\r";
     return strchr(extra, c) != NULL;
 }
 
