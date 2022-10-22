@@ -27,55 +27,47 @@
  */
 
 #include "file.h"
-#include "lexer.h"
-#include "semantic_and_syntatic.h"
-#include "symbol_table.h"
 
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-static struct file file;
-static struct lexer lexer;
-static struct symbol_table table;
-
-static void
-cleanup(void)
-{
-    symbol_table_destroy(&table);
-    destroy_stdin_file(&file);
-}
+#include <string.h>
 
 int
-main(void)
+read_file_from_stdin(struct file *file, uint32_t capacity)
 {
-#if defined(WAIT_ATTACH)
-    static volatile uint8_t _waiting_for_debug = 1;
+    const size_t total = (size_t)capacity + 1;
 
-    while (_waiting_for_debug)
-        ;
-#endif
+    file->size = 0;
+    file->buffer = malloc(total);
+    if (!file->buffer)
+        return -1;
 
-    assert(atexit(cleanup) == 0);
+    char c = (char)fgetc(stdin);
+    while (!feof(stdin) && file->size < capacity) {
+        file->buffer[file->size++] = c;
+        c = (char)fgetc(stdin);
+    }
+    file->buffer[file->size] = '\0';
 
-    assert(read_file_from_stdin(&file, MAX_FILE_SIZE) == 0);
-
-    assert(symbol_table_create(&table, 64) == 0);
-    symbol_table_populate_with_keywords(&table);
-
-    lexer_init(&lexer, &file, &table);
-
-    struct lexical_entry entry;
-    enum lexer_result result = lexer_get_next_token(&lexer, &entry);
-    if (result == LEXER_RESULT_FOUND) {
-        struct syntatic_ctx syntatic_ctx;
-        syntatic_init(&syntatic_ctx, &lexer, &entry);
-        if (syntatic_start(&syntatic_ctx) == 0) {
-            fprintf(ERR_STREAM, "%i linhas compiladas.\n", lexer.line);
+    // Removing <CR><LF> from files.
+    char *ending = NULL;
+    if (strstr(file->buffer, "\r\n")) {
+        fputs("Processing \\r\\n...\n", ERR_STREAM);
+        ending = strstr(file->buffer, "\r\n");
+        while (ending) {
+            ending[0] = '\n';
+            ending[1] = ' ';
+            ending = strstr(ending, "\r\n");
         }
-    } else if (result != LEXER_RESULT_EMPTY) {
-        lexer_print_error(&lexer);
     }
 
     return 0;
+}
+
+void
+destroy_stdin_file(struct file *file)
+{
+    free(file->buffer);
+    file->buffer = NULL;
+    file->size = 0;
 }

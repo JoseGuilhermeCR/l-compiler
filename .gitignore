@@ -1,15 +1,9 @@
-# Ignore tags
+# Text Editor and IDE stuff
 tags
-
-# Ignore compilation output.
-*.out
-*.elf
-*.o
-l-compiler
-
-# Ignore dependency files.
-*.d
-
-# Ignore clangd
 compile_commands.json
+.vs
 .cache
+
+# CMake Build
+build/
+out/
