@@ -35,7 +35,7 @@
 #include <stdio.h>
 
 static void
-semantic_apply_sr2(struct symbol *symbol, enum constant_type const_type)
+semantic_apply_sr5(struct symbol *symbol, enum constant_type const_type)
 {
     switch (const_type) {
         case CONSTANT_TYPE_INTEGER:
@@ -201,7 +201,7 @@ syntatic_decl_const(struct syntatic_ctx *ctx)
 
     MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
 
-    semantic_apply_sr2(id_entry, const_type);
+    semantic_apply_sr5(id_entry, const_type);
 
     MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
     return 0;
