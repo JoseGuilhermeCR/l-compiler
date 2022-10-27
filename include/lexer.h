@@ -104,8 +104,10 @@ struct lexical_entry
     enum token token;
     struct lexeme lexeme;
     enum constant_type constant_type;
+
     /* Used only when token = TOKEN_IDENTIFIER. */
     struct symbol *symbol_table_entry;
+    uint8_t is_new_identifier;
 };
 
 void

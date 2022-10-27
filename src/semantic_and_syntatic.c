@@ -65,6 +65,17 @@ semantic_apply_sr5(struct symbol *symbol, enum constant_type const_type)
 }
 
 static int
+semantic_apply_sr4(uint8_t is_new_identifier)
+{
+    if (!is_new_identifier) {
+        fputs("Identificador ja declarado", ERR_STREAM);
+        return -1;
+    }
+
+    return 0;
+}
+
+static int
 semantic_apply_sr3(struct symbol *symbol, enum constant_type ct)
 {
     const enum symbol_type st = symbol->symbol_type;
@@ -186,9 +197,13 @@ syntatic_match_token(struct syntatic_ctx *ctx, enum token token)
 static int
 syntatic_decl_var(struct syntatic_ctx *ctx, enum token type_tok)
 {
+    uint8_t is_new_identifier = ctx->entry->is_new_identifier;
     struct symbol *id_entry = ctx->entry->symbol_table_entry;
 
     MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
+
+    if (semantic_apply_sr4(is_new_identifier) < 0)
+        return -1;
 
     semantic_apply_sr1(id_entry, type_tok);
 
@@ -217,8 +232,12 @@ syntatic_decl_var(struct syntatic_ctx *ctx, enum token type_tok)
             MATCH_OR_ERROR(ctx, TOKEN_COMMA);
 
             id_entry = ctx->entry->symbol_table_entry;
+            is_new_identifier = ctx->entry->is_new_identifier;
 
             MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
+
+            if (semantic_apply_sr4(is_new_identifier) < 0)
+                return -1;
 
             semantic_apply_sr1(id_entry, type_tok);
 

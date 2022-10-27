@@ -202,6 +202,7 @@ lexer_get_next_token(struct lexer *lexer, struct lexical_entry *entry)
                     assert(s &&
                            "symbol_table_insert cannot fail at this point.");
 
+                    entry->is_new_identifier = 1;
                     entry->token = TOKEN_IDENTIFIER;
                     entry->symbol_table_entry = s;
                     return LEXER_RESULT_FOUND;
