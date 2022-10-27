@@ -28,9 +28,36 @@
 
 #include "semantic_and_syntatic.h"
 
+#include "utils.h"
+#include "symbol_table.h"
+
 #include <stdio.h>
 
-#include "utils.h"
+static void
+semantic_apply_sr1(struct lexical_entry *entry, enum token tok)
+{
+    switch (tok) {
+        case TOKEN_INT:
+            entry->symbol_table_entry->symbol_type = SYMBOL_TYPE_INTEGER;
+            break;
+        case TOKEN_FLOAT:
+            entry->symbol_table_entry->symbol_type = SYMBOL_TYPE_FLOATING_POINT;
+            break;
+        case TOKEN_STRING:
+            entry->symbol_table_entry->symbol_type = SYMBOL_TYPE_STRING;
+            break;
+        case TOKEN_BOOLEAN:
+            entry->symbol_table_entry->symbol_type = SYMBOL_TYPE_LOGIC;
+            break;
+        case TOKEN_CHAR:
+            entry->symbol_table_entry->symbol_type = SYMBOL_TYPE_CHAR;
+            break;
+        default:
+            break;
+    }
+
+    entry->symbol_table_entry->symbol_class = SYMBOL_CLASS_VAR;
+}
 
 static void
 syntatic_report_unexpected_token_error(struct syntatic_ctx *ctx)
@@ -511,12 +538,16 @@ syntatic_start(struct syntatic_ctx *ctx)
             enum token tok = ctx->entry->token;
             MATCH_OR_ERROR(ctx, tok);
 
+            // S.R.: 4 (TODO)
+
             switch (tok) {
                 case TOKEN_INT:
                 case TOKEN_FLOAT:
                 case TOKEN_STRING:
                 case TOKEN_BOOLEAN:
                 case TOKEN_CHAR:
+                    // S.R.: 1
+                    semantic_apply_sr1(ctx->entry, tok);
                     if (syntatic_decl_var(ctx) < 0)
                         return -1;
                     break;
