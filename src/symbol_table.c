@@ -101,7 +101,7 @@ symbol_table_search(struct symbol_table *table, const char *lexeme)
     return NULL;
 }
 
-int
+struct symbol *
 symbol_table_insert(struct symbol_table *table,
                     const char *lexeme,
                     enum token token)
@@ -115,20 +115,20 @@ symbol_table_insert(struct symbol_table *table,
     // Empty entry, great!
     if (s->lexeme[0] == '\0') {
         symbol_init(s, lexeme, token);
-        return 0;
+        return s;
     }
 
     // Collision, go to the end of the symbols while checking if
     // any of them is already what we are trying to insert, so
     // that we don't insert any duplicates in the table.
     if (is_case_insensitive_equal(s->lexeme, lexeme))
-        return -1;
+        return NULL;
 
     struct symbol *previous = s;
     struct symbol *next = s->next;
     while (next) {
         if (is_case_insensitive_equal(next->lexeme, lexeme))
-            return -1;
+            return NULL;
         previous = next;
         next = next->next;
     }
@@ -139,28 +139,28 @@ symbol_table_insert(struct symbol_table *table,
     symbol_init(next, lexeme, token);
 
     previous->next = next;
-    return 0;
+    return next;
 }
 
 void
 symbol_table_populate_with_keywords(struct symbol_table *table)
 {
-    assert(symbol_table_insert(table, "const", TOKEN_CONST) == 0);
-    assert(symbol_table_insert(table, "int", TOKEN_INT) == 0);
-    assert(symbol_table_insert(table, "char", TOKEN_CHAR) == 0);
-    assert(symbol_table_insert(table, "while", TOKEN_WHILE) == 0);
-    assert(symbol_table_insert(table, "if", TOKEN_IF) == 0);
-    assert(symbol_table_insert(table, "float", TOKEN_FLOAT) == 0);
-    assert(symbol_table_insert(table, "else", TOKEN_ELSE) == 0);
-    assert(symbol_table_insert(table, "readln", TOKEN_READLN) == 0);
-    assert(symbol_table_insert(table, "div", TOKEN_DIV) == 0);
-    assert(symbol_table_insert(table, "string", TOKEN_STRING) == 0);
-    assert(symbol_table_insert(table, "write", TOKEN_WRITE) == 0);
-    assert(symbol_table_insert(table, "writeln", TOKEN_WRITELN) == 0);
-    assert(symbol_table_insert(table, "mod", TOKEN_MOD) == 0);
-    assert(symbol_table_insert(table, "boolean", TOKEN_BOOLEAN) == 0);
-    assert(symbol_table_insert(table, "true", TOKEN_CONSTANT) == 0);
-    assert(symbol_table_insert(table, "false", TOKEN_CONSTANT) == 0);
+    assert(symbol_table_insert(table, "const", TOKEN_CONST));
+    assert(symbol_table_insert(table, "int", TOKEN_INT));
+    assert(symbol_table_insert(table, "char", TOKEN_CHAR));
+    assert(symbol_table_insert(table, "while", TOKEN_WHILE));
+    assert(symbol_table_insert(table, "if", TOKEN_IF));
+    assert(symbol_table_insert(table, "float", TOKEN_FLOAT));
+    assert(symbol_table_insert(table, "else", TOKEN_ELSE));
+    assert(symbol_table_insert(table, "readln", TOKEN_READLN));
+    assert(symbol_table_insert(table, "div", TOKEN_DIV));
+    assert(symbol_table_insert(table, "string", TOKEN_STRING));
+    assert(symbol_table_insert(table, "write", TOKEN_WRITE));
+    assert(symbol_table_insert(table, "writeln", TOKEN_WRITELN));
+    assert(symbol_table_insert(table, "mod", TOKEN_MOD));
+    assert(symbol_table_insert(table, "boolean", TOKEN_BOOLEAN));
+    assert(symbol_table_insert(table, "true", TOKEN_CONSTANT));
+    assert(symbol_table_insert(table, "false", TOKEN_CONSTANT));
 }
 
 void

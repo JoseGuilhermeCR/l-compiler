@@ -29,6 +29,7 @@
 #include "lexer.h"
 
 #include "symbol_table.h"
+#include "token.h"
 #include "utils.h"
 
 #include <assert.h>
@@ -186,20 +187,23 @@ lexer_get_next_token(struct lexer *lexer, struct lexical_entry *entry)
                     memcpy(
                         &entry->lexeme, &lexer->lexeme, sizeof(struct lexeme));
 
-                    const struct symbol *s = symbol_table_search(
+                    struct symbol *s = symbol_table_search(
                         lexer->symbol_table, lexer->lexeme.buffer);
                     if (s) {
                         entry->token = s->token;
+                        if (entry->token == TOKEN_IDENTIFIER)
+                            entry->symbol_table_entry = s;
                         return LEXER_RESULT_FOUND;
                     }
 
-                    const int error = symbol_table_insert(lexer->symbol_table,
-                                                          lexer->lexeme.buffer,
-                                                          TOKEN_IDENTIFIER);
-                    assert(error == 0 &&
+                    s = symbol_table_insert(lexer->symbol_table,
+                                            lexer->lexeme.buffer,
+                                            TOKEN_IDENTIFIER);
+                    assert(s &&
                            "symbol_table_insert cannot fail at this point.");
 
                     entry->token = TOKEN_IDENTIFIER;
+                    entry->symbol_table_entry = s;
                     return LEXER_RESULT_FOUND;
                 }
                 break;

@@ -88,7 +88,7 @@ symbol_table_create(struct symbol_table *table, uint32_t capacity);
 struct symbol *
 symbol_table_search(struct symbol_table *table, const char *lexeme);
 
-int
+struct symbol *
 symbol_table_insert(struct symbol_table *table,
                     const char *lexeme,
                     enum token token);
