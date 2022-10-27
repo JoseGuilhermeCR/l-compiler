@@ -28,35 +28,62 @@
 
 #include "semantic_and_syntatic.h"
 
-#include "utils.h"
+#include "lexer.h"
 #include "symbol_table.h"
+#include "utils.h"
 
 #include <stdio.h>
 
 static void
-semantic_apply_sr1(struct lexical_entry *entry, enum token tok)
+semantic_apply_sr2(struct symbol *symbol, enum constant_type const_type)
 {
-    switch (tok) {
-        case TOKEN_INT:
-            entry->symbol_table_entry->symbol_type = SYMBOL_TYPE_INTEGER;
+    switch (const_type) {
+        case CONSTANT_TYPE_INTEGER:
+            symbol->symbol_type = SYMBOL_TYPE_INTEGER;
             break;
-        case TOKEN_FLOAT:
-            entry->symbol_table_entry->symbol_type = SYMBOL_TYPE_FLOATING_POINT;
+        case CONSTANT_TYPE_FLOAT:
+            symbol->symbol_type = SYMBOL_TYPE_FLOATING_POINT;
             break;
-        case TOKEN_STRING:
-            entry->symbol_table_entry->symbol_type = SYMBOL_TYPE_STRING;
+        case CONSTANT_TYPE_STRING:
+            symbol->symbol_type = SYMBOL_TYPE_STRING;
             break;
-        case TOKEN_BOOLEAN:
-            entry->symbol_table_entry->symbol_type = SYMBOL_TYPE_LOGIC;
+        case CONSTANT_TYPE_BOOLEAN:
+            symbol->symbol_type = SYMBOL_TYPE_LOGIC;
             break;
-        case TOKEN_CHAR:
-            entry->symbol_table_entry->symbol_type = SYMBOL_TYPE_CHAR;
+        case CONSTANT_TYPE_CHAR:
+            symbol->symbol_type = SYMBOL_TYPE_CHAR;
             break;
         default:
             break;
     }
 
-    entry->symbol_table_entry->symbol_class = SYMBOL_CLASS_VAR;
+    symbol->symbol_class = SYMBOL_CLASS_CONST;
+}
+
+static void
+semantic_apply_sr1(struct symbol *symbol, enum token tok)
+{
+    switch (tok) {
+        case TOKEN_INT:
+            symbol->symbol_type = SYMBOL_TYPE_INTEGER;
+            break;
+        case TOKEN_FLOAT:
+            symbol->symbol_type = SYMBOL_TYPE_FLOATING_POINT;
+            break;
+        case TOKEN_STRING:
+            symbol->symbol_type = SYMBOL_TYPE_STRING;
+            break;
+        case TOKEN_BOOLEAN:
+            symbol->symbol_type = SYMBOL_TYPE_LOGIC;
+            break;
+        case TOKEN_CHAR:
+            symbol->symbol_type = SYMBOL_TYPE_CHAR;
+            break;
+        default:
+            break;
+    }
+
+    symbol->symbol_class = SYMBOL_CLASS_VAR;
 }
 
 static void
@@ -161,15 +188,20 @@ syntatic_decl_var(struct syntatic_ctx *ctx)
 static int
 syntatic_decl_const(struct syntatic_ctx *ctx)
 {
+    struct symbol *id_entry = ctx->entry->symbol_table_entry;
+
     MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
     MATCH_OR_ERROR(ctx, TOKEN_EQUAL);
 
     if (ctx->entry->token == TOKEN_MINUS) {
         MATCH_OR_ERROR(ctx, TOKEN_MINUS);
-        MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
-    } else {
-        MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
     }
+
+    enum constant_type const_type = ctx->entry->constant_type;
+
+    MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
+
+    semantic_apply_sr2(id_entry, const_type);
 
     MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
     return 0;
@@ -547,7 +579,7 @@ syntatic_start(struct syntatic_ctx *ctx)
                 case TOKEN_BOOLEAN:
                 case TOKEN_CHAR:
                     // S.R.: 1
-                    semantic_apply_sr1(ctx->entry, tok);
+                    semantic_apply_sr1(ctx->entry->symbol_table_entry, tok);
                     if (syntatic_decl_var(ctx) < 0)
                         return -1;
                     break;
