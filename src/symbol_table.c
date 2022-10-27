@@ -28,11 +28,48 @@
 
 #include "symbol_table.h"
 
+#include "token.h"
 #include "utils.h"
 
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
+
+static const char *
+symbol_class_to_str(enum symbol_class sc)
+{
+    switch (sc) {
+        case SYMBOL_CLASS_NONE:
+            return "NONE";
+        case SYMBOL_CLASS_VAR:
+            return "VAR";
+        case SYMBOL_CLASS_CONST:
+            return "CONST";
+        default:
+            UNREACHABLE();
+    }
+}
+
+static const char *
+symbol_type_to_str(enum symbol_type st)
+{
+    switch (st) {
+        case SYMBOL_TYPE_NONE:
+            return "NONE";
+        case SYMBOL_TYPE_CHAR:
+            return "CHAR";
+        case SYMBOL_TYPE_INTEGER:
+            return "INTEGER";
+        case SYMBOL_TYPE_FLOATING_POINT:
+            return "FP";
+        case SYMBOL_TYPE_LOGIC:
+            return "LOGIC";
+        case SYMBOL_TYPE_STRING:
+            return "STRING";
+        default:
+            UNREACHABLE();
+    }
+}
 
 static void
 symbol_init(struct symbol *s, const char *lexeme, enum token token)
@@ -44,6 +81,15 @@ symbol_init(struct symbol *s, const char *lexeme, enum token token)
     s->symbol_class = SYMBOL_CLASS_NONE;
     s->symbol_type = SYMBOL_TYPE_NONE;
     s->next = NULL;
+}
+
+static void
+symbol_print(struct symbol *s, FILE *file)
+{
+    fprintf(file, "@: %p\t", s);
+    fprintf(file, "Class: %s\t", symbol_class_to_str(s->symbol_class));
+    fprintf(file, "Type: %s\t", symbol_type_to_str(s->symbol_type));
+    fprintf(file, "Lexeme: %s\n", s->lexeme);
 }
 
 static uint8_t
@@ -184,4 +230,21 @@ symbol_table_destroy(struct symbol_table *table)
     free(table->symbols);
     table->symbols = NULL;
     table->capacity = 0;
+}
+
+void
+symbol_table_dump_to(struct symbol_table *table, FILE *file)
+{
+    for (uint32_t i = 0; i != table->capacity; ++i) {
+        struct symbol *s = &table->symbols[i];
+
+        if (s->lexeme[0] != '\0' && s->token == TOKEN_IDENTIFIER)
+            symbol_print(s, file);
+
+        while (s->next) {
+            s = s->next;
+            if (s->token == TOKEN_IDENTIFIER)
+                symbol_print(s, file);
+        }
+    }
 }

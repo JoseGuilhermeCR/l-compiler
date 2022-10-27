@@ -73,6 +73,7 @@ main(void)
         if (syntatic_start(&syntatic_ctx) == 0) {
             fprintf(ERR_STREAM, "%i linhas compiladas.\n", lexer.line);
         }
+        symbol_table_dump_to(&table, stdout);
     } else if (result != LEXER_RESULT_EMPTY) {
         lexer_print_error(&lexer);
     }

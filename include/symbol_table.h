@@ -32,6 +32,7 @@
 #include "token.h"
 
 #include <stdint.h>
+#include <stdio.h>
 
 enum symbol_class
 {
@@ -98,5 +99,8 @@ symbol_table_populate_with_keywords(struct symbol_table *table);
 
 void
 symbol_table_destroy(struct symbol_table *table);
+
+void
+symbol_table_dump_to(struct symbol_table *table, FILE *file);
 
 #endif
