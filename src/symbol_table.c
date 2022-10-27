@@ -37,6 +37,8 @@
 static void
 symbol_init(struct symbol *s, const char *lexeme, enum token token)
 {
+    memset(s, 0, sizeof(*s));
+
     strncpy(s->lexeme, lexeme, MAX_LEXEME_SIZE);
     s->token = token;
     s->symbol_class = SYMBOL_CLASS_NONE;

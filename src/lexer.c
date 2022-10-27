@@ -72,7 +72,7 @@ lexer_get_next_token(struct lexer *lexer, struct lexical_entry *entry)
     if (lexer->cursor >= lexer->file->size)
         return LEXER_RESULT_EMPTY;
 
-    memset(&entry->lexeme, 0, sizeof(entry->lexeme));
+    memset(entry, 0, sizeof(*entry));
 
     lexer->state = LEXER_STATE_INITIAL;
     while (lexer->cursor != lexer->file->size) {
