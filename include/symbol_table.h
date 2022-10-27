@@ -33,6 +33,23 @@
 
 #include <stdint.h>
 
+enum symbol_class
+{
+    SYMBOL_CLASS_NONE,
+    SYMBOL_CLASS_VAR,
+    SYMBOL_CLASS_CONST
+};
+
+enum symbol_type
+{
+    SYMBOL_TYPE_NONE,
+    SYMBOL_TYPE_INTEGER,
+    SYMBOL_TYPE_LOGIC,
+    SYMBOL_TYPE_STRING,
+    SYMBOL_TYPE_FLOATING_POINT,
+    SYMBOL_TYPE_CHAR
+};
+
 /**
  * @brief A symbol that belongs to the symbol table.
  * Each symbol may be linked in a singly linked list.
@@ -41,6 +58,8 @@ struct symbol
 {
     char lexeme[MAX_LEXEME_SIZE + 1];
     enum token token;
+    enum symbol_class symbol_class;
+    enum symbol_type symbol_type;
     struct symbol *next;
 };
 

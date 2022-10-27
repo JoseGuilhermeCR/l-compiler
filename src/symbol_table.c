@@ -34,6 +34,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+static void
+symbol_init(struct symbol *s, const char *lexeme, enum token token)
+{
+    strncpy(s->lexeme, lexeme, MAX_LEXEME_SIZE);
+    s->token = token;
+    s->symbol_class = SYMBOL_CLASS_NONE;
+    s->symbol_type = SYMBOL_TYPE_NONE;
+    s->next = NULL;
+}
+
 static uint8_t
 is_case_insensitive_equal(const char *lhs, const char *rhs)
 {
@@ -104,8 +114,7 @@ symbol_table_insert(struct symbol_table *table,
     struct symbol *s = &table->symbols[idx];
     // Empty entry, great!
     if (s->lexeme[0] == '\0') {
-        strncpy(s->lexeme, lexeme, MAX_LEXEME_SIZE);
-        s->token = token;
+        symbol_init(s, lexeme, token);
         return 0;
     }
 
@@ -127,9 +136,7 @@ symbol_table_insert(struct symbol_table *table,
     next = malloc(sizeof(*next));
     assert(next && "failed to allocate memory for new symbol.");
 
-    strncpy(next->lexeme, lexeme, MAX_LEXEME_SIZE);
-    next->token = token;
-    next->next = NULL;
+    symbol_init(next, lexeme, token);
 
     previous->next = next;
     return 0;
