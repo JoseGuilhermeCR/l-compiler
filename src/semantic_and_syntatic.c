@@ -32,11 +32,15 @@
 #include "symbol_table.h"
 #include "utils.h"
 
+#include <assert.h>
 #include <stdio.h>
 
 static void
 semantic_apply_sr5(struct symbol *symbol, enum constant_type const_type)
 {
+    assert(symbol &&
+           "A NULL symbol means this was probably not an IDENTIFIER.");
+
     switch (const_type) {
         case CONSTANT_TYPE_INTEGER:
             symbol->symbol_type = SYMBOL_TYPE_INTEGER;
@@ -60,9 +64,48 @@ semantic_apply_sr5(struct symbol *symbol, enum constant_type const_type)
     symbol->symbol_class = SYMBOL_CLASS_CONST;
 }
 
+static int
+semantic_apply_sr3(struct symbol *symbol, enum constant_type ct)
+{
+    const enum symbol_type st = symbol->symbol_type;
+    if ((st == SYMBOL_TYPE_CHAR && ct == CONSTANT_TYPE_CHAR) ||
+        (st == SYMBOL_TYPE_LOGIC && ct == CONSTANT_TYPE_BOOLEAN) ||
+        (st == SYMBOL_TYPE_STRING && ct == CONSTANT_TYPE_STRING) ||
+        (st == SYMBOL_TYPE_FLOATING_POINT && ct == CONSTANT_TYPE_FLOAT) ||
+        (st == SYMBOL_TYPE_INTEGER && ct == CONSTANT_TYPE_INTEGER)) {
+        return 0;
+    }
+
+    fputs("ERRO: Tipos incompativeis...\n", ERR_STREAM);
+    return -1;
+}
+
+static int
+semantic_apply_sr2(struct symbol *symbol, uint8_t has_minus)
+{
+    assert(symbol &&
+           "A NULL symbol means this was probably not an IDENTIFIER.");
+
+    if (!has_minus)
+        return 0;
+
+    switch (symbol->symbol_type) {
+        case SYMBOL_TYPE_CHAR:
+        case SYMBOL_TYPE_LOGIC:
+        case SYMBOL_TYPE_STRING:
+            fputs("ERRO: Tipos incompativeis...\n", ERR_STREAM);
+            return -1;
+        default:
+            return 0;
+    }
+}
+
 static void
 semantic_apply_sr1(struct symbol *symbol, enum token tok)
 {
+    assert(symbol &&
+           "A NULL symbol means this was probably not an IDENTIFIER.");
+
     switch (tok) {
         case TOKEN_INT:
             symbol->symbol_type = SYMBOL_TYPE_INTEGER;
@@ -141,19 +184,29 @@ syntatic_match_token(struct syntatic_ctx *ctx, enum token token)
     } while (0)
 
 static int
-syntatic_decl_var(struct syntatic_ctx *ctx)
+syntatic_decl_var(struct syntatic_ctx *ctx, enum token type_tok)
 {
+    struct symbol *id_entry = ctx->entry->symbol_table_entry;
+
     MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
+
+    semantic_apply_sr1(id_entry, type_tok);
 
     if (ctx->entry->token == TOKEN_ASSIGNMENT) {
         MATCH_OR_ERROR(ctx, TOKEN_ASSIGNMENT);
 
         if (ctx->entry->token == TOKEN_MINUS) {
+            if (semantic_apply_sr2(id_entry, 1) < 0)
+                return -1;
             MATCH_OR_ERROR(ctx, TOKEN_MINUS);
-            MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
-        } else {
-            MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
         }
+
+        const enum constant_type const_type = ctx->entry->constant_type;
+
+        MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
+
+        if (semantic_apply_sr3(id_entry, const_type) < 0)
+            return -1;
     }
 
     if (ctx->entry->token == TOKEN_SEMICOLON) {
@@ -162,18 +215,29 @@ syntatic_decl_var(struct syntatic_ctx *ctx)
     } else if (ctx->entry->token == TOKEN_COMMA) {
         while (ctx->entry->token == TOKEN_COMMA) {
             MATCH_OR_ERROR(ctx, TOKEN_COMMA);
+
+            id_entry = ctx->entry->symbol_table_entry;
+
             MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
+
+            semantic_apply_sr1(id_entry, type_tok);
 
             // Handle possible assignment for variable.
             if (ctx->entry->token == TOKEN_ASSIGNMENT) {
                 MATCH_OR_ERROR(ctx, TOKEN_ASSIGNMENT);
 
                 if (ctx->entry->token == TOKEN_MINUS) {
+                    if (semantic_apply_sr2(id_entry, 1) < 0)
+                        return -1;
                     MATCH_OR_ERROR(ctx, TOKEN_MINUS);
-                    MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
-                } else {
-                    MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
                 }
+
+                const enum constant_type const_type = ctx->entry->constant_type;
+
+                MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
+
+                if (semantic_apply_sr3(id_entry, const_type) < 0)
+                    return -1;
             }
         }
 
@@ -188,6 +252,7 @@ syntatic_decl_var(struct syntatic_ctx *ctx)
 static int
 syntatic_decl_const(struct syntatic_ctx *ctx)
 {
+    uint8_t has_minus = 0;
     struct symbol *id_entry = ctx->entry->symbol_table_entry;
 
     MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
@@ -195,6 +260,7 @@ syntatic_decl_const(struct syntatic_ctx *ctx)
 
     if (ctx->entry->token == TOKEN_MINUS) {
         MATCH_OR_ERROR(ctx, TOKEN_MINUS);
+        has_minus = 1;
     }
 
     enum constant_type const_type = ctx->entry->constant_type;
@@ -202,6 +268,8 @@ syntatic_decl_const(struct syntatic_ctx *ctx)
     MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
 
     semantic_apply_sr5(id_entry, const_type);
+    if (semantic_apply_sr2(id_entry, has_minus) < 0)
+        return -1;
 
     MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
     return 0;
@@ -578,9 +646,7 @@ syntatic_start(struct syntatic_ctx *ctx)
                 case TOKEN_STRING:
                 case TOKEN_BOOLEAN:
                 case TOKEN_CHAR:
-                    // S.R.: 1
-                    semantic_apply_sr1(ctx->entry->symbol_table_entry, tok);
-                    if (syntatic_decl_var(ctx) < 0)
+                    if (syntatic_decl_var(ctx, tok) < 0)
                         return -1;
                     break;
                 case TOKEN_CONST:
