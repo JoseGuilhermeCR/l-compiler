@@ -317,7 +317,7 @@ lexer_get_next_token(struct lexer *lexer, struct lexical_entry *entry)
                 lexeme_append_or_error(&lexer->lexeme, c);
                 if (c == '"') {
                     entry->token = TOKEN_CONSTANT;
-                    entry->constant_type = CONSTANT_TYPE_CHAR;
+                    entry->constant_type = CONSTANT_TYPE_STRING;
                     memcpy(
                         &entry->lexeme, &lexer->lexeme, sizeof(struct lexeme));
                     return LEXER_RESULT_FOUND;
