@@ -418,15 +418,27 @@ syntatic_f(struct syntatic_ctx *ctx)
         case TOKEN_CONSTANT:
             MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
             break;
-        case TOKEN_IDENTIFIER:
+        case TOKEN_IDENTIFIER: {
+            struct symbol *id_entry = ctx->entry->symbol_table_entry;
+            const uint8_t is_new_identifier = ctx->entry->is_new_identifier;
+
             MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
+
+            if (semantic_apply_sr8(is_new_identifier) < 0)
+                return -1;
+
             if (ctx->entry->token == TOKEN_OPENING_SQUARE_BRACKET) {
                 MATCH_OR_ERROR(ctx, TOKEN_OPENING_SQUARE_BRACKET);
+
+                if (semantic_apply_sr6(id_entry) < 0)
+                    return -1;
+
                 if (syntatic_exp(ctx) < 0)
                     return -1;
                 MATCH_OR_ERROR(ctx, TOKEN_CLOSING_SQUARE_BRACKET);
             }
             break;
+        }
         default:
             UNREACHABLE();
     }
@@ -536,10 +548,11 @@ syntatic_attr(struct syntatic_ctx *ctx)
         return -1;
 
     if (ctx->entry->token == TOKEN_OPENING_SQUARE_BRACKET) {
+        MATCH_OR_ERROR(ctx, TOKEN_OPENING_SQUARE_BRACKET);
+
         if (semantic_apply_sr6(id_entry) < 0)
             return -1;
 
-        MATCH_OR_ERROR(ctx, TOKEN_OPENING_SQUARE_BRACKET);
         if (syntatic_exp(ctx) < 0)
             return -1;
         MATCH_OR_ERROR(ctx, TOKEN_CLOSING_SQUARE_BRACKET);
