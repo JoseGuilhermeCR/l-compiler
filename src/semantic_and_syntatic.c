@@ -36,6 +36,59 @@
 #include <assert.h>
 #include <stdio.h>
 
+static void
+semantic_apply_sr17(enum symbol_type *type)
+{
+    *type = SYMBOL_TYPE_FLOATING_POINT;
+}
+
+static void
+semantic_apply_sr16(enum symbol_type *type)
+{
+    *type = SYMBOL_TYPE_INTEGER;
+}
+
+static void
+semantic_apply_sr19(enum symbol_type *type,
+                    struct symbol *symbol,
+                    uint8_t had_brackets)
+{
+    *type = had_brackets ? SYMBOL_TYPE_CHAR : symbol->symbol_type;
+}
+
+static void
+semantic_apply_sr18(enum symbol_type *type, enum constant_type const_type)
+{
+    switch (const_type) {
+        case CONSTANT_TYPE_CHAR:
+            *type = SYMBOL_TYPE_CHAR;
+            break;
+        case CONSTANT_TYPE_INTEGER:
+            *type = SYMBOL_TYPE_INTEGER;
+            break;
+        case CONSTANT_TYPE_FLOAT:
+            *type = SYMBOL_TYPE_FLOATING_POINT;
+            break;
+        case CONSTANT_TYPE_STRING:
+            *type = SYMBOL_TYPE_STRING;
+            break;
+        case CONSTANT_TYPE_BOOLEAN:
+            *type = SYMBOL_TYPE_LOGIC;
+            break;
+    }
+}
+
+static int
+semantic_apply_sr14(enum symbol_type type)
+{
+    if (type != SYMBOL_TYPE_LOGIC) {
+        fputs("Tipo incompatíveis", ERR_STREAM);
+        return -1;
+    }
+
+    return 0;
+}
+
 static int
 semantic_apply_sr10(struct symbol *symbol)
 {
@@ -376,7 +429,7 @@ static int
 syntatic_exp(struct syntatic_ctx *ctx);
 
 static int
-syntatic_f(struct syntatic_ctx *ctx)
+syntatic_f(struct syntatic_ctx *ctx, enum symbol_type *type)
 {
     if (ctx->found_last_token) {
         syntatic_report_unexpected_eof_error(ctx);
@@ -392,7 +445,9 @@ syntatic_f(struct syntatic_ctx *ctx)
     switch (tok) {
         case TOKEN_NOT:
             MATCH_OR_ERROR(ctx, TOKEN_NOT);
-            if (syntatic_f(ctx) < 0)
+            if (syntatic_f(ctx, type) < 0)
+                return -1;
+            if (semantic_apply_sr14(*type) < 0)
                 return -1;
             break;
         case TOKEN_OPENING_PAREN:
@@ -407,6 +462,7 @@ syntatic_f(struct syntatic_ctx *ctx)
             if (syntatic_exp(ctx) < 0)
                 return -1;
             MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);
+            semantic_apply_sr16(type);
             break;
         case TOKEN_FLOAT:
             MATCH_OR_ERROR(ctx, TOKEN_FLOAT);
@@ -414,13 +470,18 @@ syntatic_f(struct syntatic_ctx *ctx)
             if (syntatic_exp(ctx) < 0)
                 return -1;
             MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);
+            semantic_apply_sr17(type);
             break;
-        case TOKEN_CONSTANT:
+        case TOKEN_CONSTANT: {
+            enum constant_type const_type = ctx->entry->constant_type;
             MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
+            semantic_apply_sr18(type, const_type);
             break;
+        }
         case TOKEN_IDENTIFIER: {
             struct symbol *id_entry = ctx->entry->symbol_table_entry;
             const uint8_t is_new_identifier = ctx->entry->is_new_identifier;
+            uint8_t had_brackets = 0;
 
             MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
 
@@ -430,6 +491,8 @@ syntatic_f(struct syntatic_ctx *ctx)
             if (ctx->entry->token == TOKEN_OPENING_SQUARE_BRACKET) {
                 MATCH_OR_ERROR(ctx, TOKEN_OPENING_SQUARE_BRACKET);
 
+                had_brackets = 1;
+
                 if (semantic_apply_sr6(id_entry) < 0)
                     return -1;
 
@@ -437,6 +500,8 @@ syntatic_f(struct syntatic_ctx *ctx)
                     return -1;
                 MATCH_OR_ERROR(ctx, TOKEN_CLOSING_SQUARE_BRACKET);
             }
+
+            semantic_apply_sr19(type, id_entry, had_brackets);
             break;
         }
         default:
@@ -449,7 +514,9 @@ syntatic_f(struct syntatic_ctx *ctx)
 static int
 syntatic_t(struct syntatic_ctx *ctx)
 {
-    if (syntatic_f(ctx) < 0)
+    enum symbol_type first_f_type = SYMBOL_TYPE_NONE;
+
+    if (syntatic_f(ctx, &first_f_type) < 0)
         return -1;
 
     enum token tok = ctx->entry->token;
@@ -457,7 +524,7 @@ syntatic_t(struct syntatic_ctx *ctx)
            tok == TOKEN_DIV || tok == TOKEN_DIVISION) {
 
         MATCH_OR_ERROR(ctx, tok);
-        if (syntatic_f(ctx) < 0)
+        if (syntatic_f(ctx, &first_f_type) < 0)
             return -1;
 
         tok = ctx->entry->token;
