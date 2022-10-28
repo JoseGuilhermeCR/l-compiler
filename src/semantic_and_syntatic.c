@@ -389,27 +389,37 @@ syntatic_f(struct syntatic_ctx *ctx)
     }
 
     enum token tok = ctx->entry->token;
-    MATCH_OR_ERROR(ctx, tok);
     switch (tok) {
         case TOKEN_NOT:
+            MATCH_OR_ERROR(ctx, TOKEN_NOT);
             if (syntatic_f(ctx) < 0)
                 return -1;
             break;
         case TOKEN_OPENING_PAREN:
+            MATCH_OR_ERROR(ctx, TOKEN_OPENING_PAREN);
             if (syntatic_exp(ctx) < 0)
                 return -1;
             MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);
             break;
         case TOKEN_INT:
+            MATCH_OR_ERROR(ctx, TOKEN_INT);
+            MATCH_OR_ERROR(ctx, TOKEN_OPENING_PAREN);
+            if (syntatic_exp(ctx) < 0)
+                return -1;
+            MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);
+            break;
         case TOKEN_FLOAT:
+            MATCH_OR_ERROR(ctx, TOKEN_FLOAT);
             MATCH_OR_ERROR(ctx, TOKEN_OPENING_PAREN);
             if (syntatic_exp(ctx) < 0)
                 return -1;
             MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);
             break;
         case TOKEN_CONSTANT:
+            MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
             break;
         case TOKEN_IDENTIFIER:
+            MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
             if (ctx->entry->token == TOKEN_OPENING_SQUARE_BRACKET) {
                 MATCH_OR_ERROR(ctx, TOKEN_OPENING_SQUARE_BRACKET);
                 if (syntatic_exp(ctx) < 0)
