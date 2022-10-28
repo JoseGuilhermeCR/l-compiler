@@ -856,7 +856,7 @@ syntatic_exp(struct syntatic_ctx *ctx, enum symbol_type *exp_type)
             break;
         }
         default:
-            UNREACHABLE();
+            break;
     }
 
     return 0;
