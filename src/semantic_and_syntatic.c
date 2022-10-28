@@ -36,16 +36,196 @@
 #include <assert.h>
 #include <stdio.h>
 
-static void
-semantic_apply_sr17(enum symbol_type *type)
+static uint8_t
+is_st_arithmetic(enum symbol_type type)
 {
-    *type = SYMBOL_TYPE_FLOATING_POINT;
+    return type == SYMBOL_TYPE_INTEGER || type == SYMBOL_TYPE_FLOATING_POINT;
+}
+
+static int
+semantic_apply_sr26(enum token operation_tok,
+                    enum symbol_type *exp_type,
+                    enum symbol_type t_type)
+{
+    const uint8_t any_string =
+        *exp_type == SYMBOL_TYPE_STRING || t_type == SYMBOL_TYPE_STRING;
+    const uint8_t are_types_equal = *exp_type == t_type;
+    const uint8_t is_arithmetic =
+        is_st_arithmetic(*exp_type) && is_st_arithmetic(t_type);
+
+    switch (operation_tok) {
+        case TOKEN_EQUAL:
+        case TOKEN_NOT_EQUAL:
+            if (!is_arithmetic && !are_types_equal) {
+                fputs("Tipos incompativeis", ERR_STREAM);
+                return -1;
+            }
+            break;
+        case TOKEN_LESS:
+        case TOKEN_LESS_EQUAL:
+        case TOKEN_GREATER:
+        case TOKEN_GREATER_EQUAL:
+            if (any_string || (!is_arithmetic && !are_types_equal)) {
+                fputs("Tipos incompativeis", ERR_STREAM);
+                return -1;
+            }
+            break;
+        default:
+            UNREACHABLE();
+    }
+
+    // TODO(Jose): Maybe remove this from here,
+    // but the resulting expression will always
+    // be of boolean type.
+    *exp_type = SYMBOL_TYPE_LOGIC;
+    return 0;
+}
+
+static int
+semantic_apply_sr25(enum token operation_tok,
+                    enum symbol_type *exps_type,
+                    enum symbol_type t_type)
+{
+    const uint8_t is_arithmetic =
+        is_st_arithmetic(*exps_type) && is_st_arithmetic(t_type);
+
+    switch (operation_tok) {
+        case TOKEN_PLUS:
+            if (is_arithmetic) {
+                // If one of the operands is not a float, implicitly convert it.
+                if (t_type == SYMBOL_TYPE_FLOATING_POINT) {
+                    *exps_type = SYMBOL_TYPE_FLOATING_POINT;
+                }
+            } else {
+                fputs("Tipos incompativeis", ERR_STREAM);
+                return -1;
+            }
+
+            break;
+        case TOKEN_MINUS:
+            if (is_arithmetic) {
+                // If one of the operands is not a float, implicitly convert it.
+                if (t_type == SYMBOL_TYPE_FLOATING_POINT) {
+                    *exps_type = SYMBOL_TYPE_FLOATING_POINT;
+                }
+            } else {
+                fputs("Tipos incompativeis", ERR_STREAM);
+                return -1;
+            }
+            break;
+        case TOKEN_LOGICAL_OR:
+            if (*exps_type != SYMBOL_TYPE_LOGIC ||
+                t_type != SYMBOL_TYPE_LOGIC) {
+                fputs("Tipos incompativeis", ERR_STREAM);
+                return -1;
+            }
+            break;
+        default:
+            UNREACHABLE();
+    }
+
+    return 0;
+}
+
+static int
+semantic_apply_sr24(enum token operation_tok,
+                    enum symbol_type *t_type,
+                    enum symbol_type f_type)
+{
+    const uint8_t is_arithmetic =
+        is_st_arithmetic(*t_type) && is_st_arithmetic(f_type);
+
+    switch (operation_tok) {
+        case TOKEN_TIMES:
+            if (is_arithmetic) {
+                // If one of the operands is not a float, implicitly convert it.
+                if (f_type == SYMBOL_TYPE_FLOATING_POINT) {
+                    *t_type = SYMBOL_TYPE_FLOATING_POINT;
+                }
+            } else {
+                fputs("Tipos incompativeis", ERR_STREAM);
+                return -1;
+            }
+            break;
+        case TOKEN_LOGICAL_AND:
+            if (*t_type != SYMBOL_TYPE_LOGIC || f_type != SYMBOL_TYPE_LOGIC) {
+                fputs("Tipos incompativeis", ERR_STREAM);
+                return -1;
+            }
+            break;
+        case TOKEN_MOD:
+            if (is_arithmetic) {
+                // "mod" can only be used between integers.
+                if (*t_type != SYMBOL_TYPE_INTEGER ||
+                    f_type != SYMBOL_TYPE_INTEGER) {
+                    fputs("Tipo incompativeis", ERR_STREAM);
+                    return -1;
+                }
+            } else {
+                fputs("Tipos incompativeis", ERR_STREAM);
+                return -1;
+            }
+            break;
+        case TOKEN_DIV:
+            if (is_arithmetic) {
+                // "div" is used for integer division... if any of the operands
+                // is a floating point... we have a type error.
+                if (*t_type != SYMBOL_TYPE_INTEGER ||
+                    f_type != SYMBOL_TYPE_INTEGER) {
+                    fputs("Tipos incompativeis.", ERR_STREAM);
+                    return -1;
+                }
+            } else {
+                fputs("Tipos incompativeis", ERR_STREAM);
+                return -1;
+            }
+            break;
+        case TOKEN_DIVISION:
+            if (is_arithmetic) {
+                // If one of the operands is not a float, implicitly convert it.
+                if (f_type == SYMBOL_TYPE_FLOATING_POINT) {
+                    *t_type = SYMBOL_TYPE_FLOATING_POINT;
+                }
+            } else {
+                fputs("Tipos incompativeis", ERR_STREAM);
+                return -1;
+            }
+            break;
+        default:
+            UNREACHABLE();
+    }
+
+    return 0;
 }
 
 static void
-semantic_apply_sr16(enum symbol_type *type)
+semantic_apply_sr23(enum symbol_type *t_type, enum symbol_type f_type)
 {
-    *type = SYMBOL_TYPE_INTEGER;
+    *t_type = f_type;
+}
+
+static void
+semantic_apply_sr22(enum symbol_type *exps_type, enum symbol_type t_type)
+{
+    *exps_type = t_type;
+}
+
+static int
+semantic_apply_sr21(enum symbol_type t_type, uint8_t had_signal)
+{
+    if (!had_signal)
+        return 0;
+
+    if (t_type != SYMBOL_TYPE_INTEGER && t_type != SYMBOL_TYPE_FLOATING_POINT)
+        return -1;
+
+    return 0;
+}
+
+static void
+semantic_apply_sr20(enum symbol_type *exp_type, enum symbol_type exps_type)
+{
+    *exp_type = exps_type;
 }
 
 static void
@@ -78,11 +258,62 @@ semantic_apply_sr18(enum symbol_type *type, enum constant_type const_type)
     }
 }
 
+static void
+semantic_apply_sr17(enum symbol_type *type)
+{
+    *type = SYMBOL_TYPE_FLOATING_POINT;
+}
+
+static void
+semantic_apply_sr16(enum symbol_type *type)
+{
+    *type = SYMBOL_TYPE_INTEGER;
+}
+
+static void
+semantic_apply_sr15(enum symbol_type *f_type, enum symbol_type exp_type)
+{
+    *f_type = exp_type;
+}
+
 static int
 semantic_apply_sr14(enum symbol_type type)
 {
     if (type != SYMBOL_TYPE_LOGIC) {
         fputs("Tipo incompatíveis", ERR_STREAM);
+        return -1;
+    }
+
+    return 0;
+}
+
+static int
+semantic_apply_sr13(enum symbol_type exp_type)
+{
+    if (exp_type != SYMBOL_TYPE_INTEGER) {
+        fputs("Tipos incompativeis", ERR_STREAM);
+        return -1;
+    }
+
+    return 0;
+}
+
+static int
+semantic_apply_sr12(enum symbol_type exp_type)
+{
+    if (exp_type != SYMBOL_TYPE_FLOATING_POINT) {
+        fputs("Tipos incompativeis", ERR_STREAM);
+        return -1;
+    }
+
+    return 0;
+}
+
+static int
+semantic_apply_sr11(enum symbol_type exp_type)
+{
+    if (exp_type != SYMBOL_TYPE_LOGIC) {
+        fputs("Tipos incompativeis", ERR_STREAM);
         return -1;
     }
 
@@ -108,6 +339,17 @@ semantic_apply_sr8(uint8_t is_new_identifier)
 {
     if (is_new_identifier) {
         fputs("Identificador nao declarado", ERR_STREAM);
+        return -1;
+    }
+
+    return 0;
+}
+
+static int
+semantic_apply_sr7(enum symbol_type exp_type)
+{
+    if (exp_type != SYMBOL_TYPE_INTEGER) {
+        fputs("Tipos incompativeis", ERR_STREAM);
         return -1;
     }
 
@@ -426,10 +668,10 @@ syntatic_is_first_of_f(struct syntatic_ctx *ctx)
 }
 
 static int
-syntatic_exp(struct syntatic_ctx *ctx);
+syntatic_exp(struct syntatic_ctx *ctx, enum symbol_type *type);
 
 static int
-syntatic_f(struct syntatic_ctx *ctx, enum symbol_type *type)
+syntatic_f(struct syntatic_ctx *ctx, enum symbol_type *f_type)
 {
     if (ctx->found_last_token) {
         syntatic_report_unexpected_eof_error(ctx);
@@ -445,37 +687,48 @@ syntatic_f(struct syntatic_ctx *ctx, enum symbol_type *type)
     switch (tok) {
         case TOKEN_NOT:
             MATCH_OR_ERROR(ctx, TOKEN_NOT);
-            if (syntatic_f(ctx, type) < 0)
+            if (syntatic_f(ctx, f_type) < 0)
                 return -1;
-            if (semantic_apply_sr14(*type) < 0)
+            if (semantic_apply_sr14(*f_type) < 0)
                 return -1;
             break;
-        case TOKEN_OPENING_PAREN:
+        case TOKEN_OPENING_PAREN: {
+            enum symbol_type exp_type = SYMBOL_TYPE_NONE;
             MATCH_OR_ERROR(ctx, TOKEN_OPENING_PAREN);
-            if (syntatic_exp(ctx) < 0)
+            if (syntatic_exp(ctx, &exp_type) < 0)
                 return -1;
+            semantic_apply_sr15(f_type, exp_type);
             MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);
             break;
-        case TOKEN_INT:
+        }
+        case TOKEN_INT: {
+            enum symbol_type exp_type = SYMBOL_TYPE_NONE;
             MATCH_OR_ERROR(ctx, TOKEN_INT);
             MATCH_OR_ERROR(ctx, TOKEN_OPENING_PAREN);
-            if (syntatic_exp(ctx) < 0)
+            if (syntatic_exp(ctx, &exp_type) < 0)
+                return -1;
+            if (semantic_apply_sr12(exp_type) < 0)
                 return -1;
             MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);
-            semantic_apply_sr16(type);
+            semantic_apply_sr16(f_type);
             break;
-        case TOKEN_FLOAT:
+        }
+        case TOKEN_FLOAT: {
+            enum symbol_type exp_type = SYMBOL_TYPE_NONE;
             MATCH_OR_ERROR(ctx, TOKEN_FLOAT);
             MATCH_OR_ERROR(ctx, TOKEN_OPENING_PAREN);
-            if (syntatic_exp(ctx) < 0)
+            if (syntatic_exp(ctx, &exp_type) < 0)
+                return -1;
+            if (semantic_apply_sr13(exp_type) < 0)
                 return -1;
             MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);
-            semantic_apply_sr17(type);
+            semantic_apply_sr17(f_type);
             break;
+        }
         case TOKEN_CONSTANT: {
             enum constant_type const_type = ctx->entry->constant_type;
             MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
-            semantic_apply_sr18(type, const_type);
+            semantic_apply_sr18(f_type, const_type);
             break;
         }
         case TOKEN_IDENTIFIER: {
@@ -496,12 +749,15 @@ syntatic_f(struct syntatic_ctx *ctx, enum symbol_type *type)
                 if (semantic_apply_sr6(id_entry) < 0)
                     return -1;
 
-                if (syntatic_exp(ctx) < 0)
+                enum symbol_type exp_type;
+                if (syntatic_exp(ctx, &exp_type) < 0)
+                    return -1;
+                if (semantic_apply_sr7(exp_type) < 0)
                     return -1;
                 MATCH_OR_ERROR(ctx, TOKEN_CLOSING_SQUARE_BRACKET);
             }
 
-            semantic_apply_sr19(type, id_entry, had_brackets);
+            semantic_apply_sr19(f_type, id_entry, had_brackets);
             break;
         }
         default:
@@ -512,19 +768,25 @@ syntatic_f(struct syntatic_ctx *ctx, enum symbol_type *type)
 }
 
 static int
-syntatic_t(struct syntatic_ctx *ctx)
+syntatic_t(struct syntatic_ctx *ctx, enum symbol_type *t_type)
 {
-    enum symbol_type first_f_type = SYMBOL_TYPE_NONE;
+    enum symbol_type f_type = SYMBOL_TYPE_NONE;
 
-    if (syntatic_f(ctx, &first_f_type) < 0)
+    if (syntatic_f(ctx, &f_type) < 0)
         return -1;
+
+    semantic_apply_sr23(t_type, f_type);
 
     enum token tok = ctx->entry->token;
     while (tok == TOKEN_TIMES || tok == TOKEN_LOGICAL_AND || tok == TOKEN_MOD ||
            tok == TOKEN_DIV || tok == TOKEN_DIVISION) {
 
         MATCH_OR_ERROR(ctx, tok);
-        if (syntatic_f(ctx, &first_f_type) < 0)
+
+        if (syntatic_f(ctx, &f_type) < 0)
+            return -1;
+
+        if (semantic_apply_sr24(tok, t_type, f_type) < 0)
             return -1;
 
         tok = ctx->entry->token;
@@ -534,21 +796,33 @@ syntatic_t(struct syntatic_ctx *ctx)
 }
 
 static int
-syntatic_exps(struct syntatic_ctx *ctx)
+syntatic_exps(struct syntatic_ctx *ctx, enum symbol_type *exps_type)
 {
+    uint8_t had_signal = 0;
+
     enum token tok = ctx->entry->token;
     if (tok == TOKEN_MINUS || tok == TOKEN_PLUS) {
         MATCH_OR_ERROR(ctx, tok);
+        had_signal = 1;
     }
 
-    if (syntatic_t(ctx) < 0)
+    enum symbol_type t_type = SYMBOL_TYPE_NONE;
+    if (syntatic_t(ctx, &t_type) < 0)
         return -1;
+
+    if (semantic_apply_sr21(t_type, had_signal) < 0)
+        return -1;
+
+    semantic_apply_sr22(exps_type, t_type);
 
     tok = ctx->entry->token;
     while (tok == TOKEN_PLUS || tok == TOKEN_MINUS || tok == TOKEN_LOGICAL_OR) {
         MATCH_OR_ERROR(ctx, tok);
 
-        if (syntatic_t(ctx) < 0)
+        if (syntatic_t(ctx, &t_type) < 0)
+            return -1;
+
+        if (semantic_apply_sr25(tok, exps_type, t_type) < 0)
             return -1;
 
         tok = ctx->entry->token;
@@ -558,10 +832,13 @@ syntatic_exps(struct syntatic_ctx *ctx)
 }
 
 static int
-syntatic_exp(struct syntatic_ctx *ctx)
+syntatic_exp(struct syntatic_ctx *ctx, enum symbol_type *exp_type)
 {
-    if (syntatic_exps(ctx) < 0)
+    enum symbol_type exps_type = SYMBOL_TYPE_NONE;
+    if (syntatic_exps(ctx, &exps_type) < 0)
         return -1;
+
+    semantic_apply_sr20(exp_type, exps_type);
 
     switch (ctx->entry->token) {
         case TOKEN_EQUAL:
@@ -569,13 +846,17 @@ syntatic_exp(struct syntatic_ctx *ctx)
         case TOKEN_LESS:
         case TOKEN_LESS_EQUAL:
         case TOKEN_GREATER:
-        case TOKEN_GREATER_EQUAL:
+        case TOKEN_GREATER_EQUAL: {
+            enum token operation_tok = ctx->entry->token;
             MATCH_OR_ERROR(ctx, ctx->entry->token);
-            if (syntatic_exps(ctx) < 0)
+            if (syntatic_exps(ctx, &exps_type) < 0)
+                return -1;
+            if (semantic_apply_sr26(operation_tok, exp_type, exps_type) < 0)
                 return -1;
             break;
+        }
         default:
-            break;
+            UNREACHABLE();
     }
 
     return 0;
@@ -584,14 +865,16 @@ syntatic_exp(struct syntatic_ctx *ctx)
 static int
 syntatic_write(struct syntatic_ctx *ctx)
 {
+    enum symbol_type type = SYMBOL_TYPE_NONE;
+
     MATCH_OR_ERROR(ctx, ctx->entry->token);
 
     MATCH_OR_ERROR(ctx, TOKEN_OPENING_PAREN);
-    if (syntatic_exp(ctx) < 0)
+    if (syntatic_exp(ctx, &type) < 0)
         return -1;
     while (ctx->entry->token == TOKEN_COMMA) {
         MATCH_OR_ERROR(ctx, TOKEN_COMMA);
-        if (syntatic_exp(ctx) < 0)
+        if (syntatic_exp(ctx, &type) < 0)
             return -1;
     }
 
@@ -603,6 +886,7 @@ syntatic_write(struct syntatic_ctx *ctx)
 static int
 syntatic_attr(struct syntatic_ctx *ctx)
 {
+    enum symbol_type type = SYMBOL_TYPE_NONE;
     const uint8_t is_new_identifier = ctx->entry->is_new_identifier;
     struct symbol *id_entry = ctx->entry->symbol_table_entry;
 
@@ -620,13 +904,13 @@ syntatic_attr(struct syntatic_ctx *ctx)
         if (semantic_apply_sr6(id_entry) < 0)
             return -1;
 
-        if (syntatic_exp(ctx) < 0)
+        if (syntatic_exp(ctx, &type) < 0)
             return -1;
         MATCH_OR_ERROR(ctx, TOKEN_CLOSING_SQUARE_BRACKET);
     }
 
     MATCH_OR_ERROR(ctx, TOKEN_ASSIGNMENT);
-    if (syntatic_exp(ctx) < 0)
+    if (syntatic_exp(ctx, &type) < 0)
         return -1;
     MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
     return 0;
@@ -635,8 +919,11 @@ syntatic_attr(struct syntatic_ctx *ctx)
 static int
 syntatic_paren_exp(struct syntatic_ctx *ctx)
 {
+    enum symbol_type exp_type = SYMBOL_TYPE_NONE;
     MATCH_OR_ERROR(ctx, TOKEN_OPENING_PAREN);
-    if (syntatic_exp(ctx) < 0)
+    if (syntatic_exp(ctx, &exp_type) < 0)
+        return -1;
+    if (semantic_apply_sr11(exp_type) < 0)
         return -1;
     MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);
     return 0;
