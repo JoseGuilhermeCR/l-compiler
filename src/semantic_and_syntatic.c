@@ -39,6 +39,9 @@
 static int
 semantic_apply_sr10(struct symbol *symbol)
 {
+    assert(symbol &&
+           "A NULL symbol means this was probably not an IDENTIFIER.");
+
     if (symbol->symbol_class != SYMBOL_CLASS_VAR) {
         fputs("Classe incompativel", ERR_STREAM);
         return -1;
@@ -52,6 +55,20 @@ semantic_apply_sr8(uint8_t is_new_identifier)
 {
     if (is_new_identifier) {
         fputs("Identificador nao declarado", ERR_STREAM);
+        return -1;
+    }
+
+    return 0;
+}
+
+static int
+semantic_apply_sr6(struct symbol *symbol)
+{
+    assert(symbol &&
+           "A NULL symbol means this was probably not an IDENTIFIER.");
+
+    if (symbol->symbol_type != SYMBOL_TYPE_STRING) {
+        fputs("Tipos incompativeis", ERR_STREAM);
         return -1;
     }
 
@@ -509,6 +526,9 @@ syntatic_attr(struct syntatic_ctx *ctx)
         return -1;
 
     if (ctx->entry->token == TOKEN_OPENING_SQUARE_BRACKET) {
+        if (semantic_apply_sr6(id_entry) < 0)
+            return -1;
+
         MATCH_OR_ERROR(ctx, TOKEN_OPENING_SQUARE_BRACKET);
         if (syntatic_exp(ctx) < 0)
             return -1;
