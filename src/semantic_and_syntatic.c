@@ -35,6 +35,28 @@
 #include <assert.h>
 #include <stdio.h>
 
+static int
+semantic_apply_sr10(struct symbol *symbol)
+{
+    if (symbol->symbol_class != SYMBOL_CLASS_VAR) {
+        fputs("Classe incompativel", ERR_STREAM);
+        return -1;
+    }
+
+    return 0;
+}
+
+static int
+semantic_apply_sr8(uint8_t is_new_identifier)
+{
+    if (is_new_identifier) {
+        fputs("Identificador nao declarado", ERR_STREAM);
+        return -1;
+    }
+
+    return 0;
+}
+
 static void
 semantic_apply_sr5(struct symbol *symbol, enum constant_type const_type)
 {
@@ -298,7 +320,18 @@ static int
 syntatic_read(struct syntatic_ctx *ctx)
 {
     MATCH_OR_ERROR(ctx, TOKEN_OPENING_PAREN);
+
+    const uint8_t is_new_identifier = ctx->entry->is_new_identifier;
+    struct symbol *id_entry = ctx->entry->symbol_table_entry;
+
     MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
+
+    if (semantic_apply_sr8(is_new_identifier) < 0)
+        return -1;
+
+    if (semantic_apply_sr10(id_entry) < 0)
+        return -1;
+
     MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);
     MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
     return 0;
