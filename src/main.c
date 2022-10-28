@@ -70,12 +70,18 @@ main(void)
     if (result == LEXER_RESULT_FOUND) {
         struct syntatic_ctx syntatic_ctx;
         syntatic_init(&syntatic_ctx, &lexer, &entry);
-        if (syntatic_start(&syntatic_ctx) == 0) {
+
+        int result = syntatic_start(&syntatic_ctx);
+        symbol_table_dump_to(&table, stdout);
+
+        if (result == 0) {
             fprintf(ERR_STREAM, "%i linhas compiladas.\n", lexer.line);
         }
-        symbol_table_dump_to(&table, stdout);
+
+        return result;
     } else if (result != LEXER_RESULT_EMPTY) {
         lexer_print_error(&lexer);
+        return -1;
     }
 
     return 0;
