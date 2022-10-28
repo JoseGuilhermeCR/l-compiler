@@ -30,6 +30,7 @@
 
 #include "lexer.h"
 #include "symbol_table.h"
+#include "token.h"
 #include "utils.h"
 
 #include <assert.h>
@@ -319,6 +320,7 @@ syntatic_decl_const(struct syntatic_ctx *ctx)
 static int
 syntatic_read(struct syntatic_ctx *ctx)
 {
+    MATCH_OR_ERROR(ctx, TOKEN_READLN);
     MATCH_OR_ERROR(ctx, TOKEN_OPENING_PAREN);
 
     const uint8_t is_new_identifier = ctx->entry->is_new_identifier;
@@ -476,6 +478,8 @@ syntatic_exp(struct syntatic_ctx *ctx)
 static int
 syntatic_write(struct syntatic_ctx *ctx)
 {
+    MATCH_OR_ERROR(ctx, ctx->entry->token);
+
     MATCH_OR_ERROR(ctx, TOKEN_OPENING_PAREN);
     if (syntatic_exp(ctx) < 0)
         return -1;
@@ -493,6 +497,17 @@ syntatic_write(struct syntatic_ctx *ctx)
 static int
 syntatic_attr(struct syntatic_ctx *ctx)
 {
+    const uint8_t is_new_identifier = ctx->entry->is_new_identifier;
+    struct symbol *id_entry = ctx->entry->symbol_table_entry;
+
+    MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
+
+    if (semantic_apply_sr8(is_new_identifier) < 0)
+        return -1;
+
+    if (semantic_apply_sr10(id_entry) < 0)
+        return -1;
+
     if (ctx->entry->token == TOKEN_OPENING_SQUARE_BRACKET) {
         MATCH_OR_ERROR(ctx, TOKEN_OPENING_SQUARE_BRACKET);
         if (syntatic_exp(ctx) < 0)
@@ -544,7 +559,6 @@ static int
 syntatic_command(struct syntatic_ctx *ctx)
 {
     enum token tok = ctx->entry->token;
-    MATCH_OR_ERROR(ctx, tok);
 
     switch (tok) {
         case TOKEN_SEMICOLON:
@@ -580,6 +594,8 @@ syntatic_command(struct syntatic_ctx *ctx)
 static int
 syntatic_while(struct syntatic_ctx *ctx)
 {
+    MATCH_OR_ERROR(ctx, TOKEN_WHILE);
+
     if (syntatic_paren_exp(ctx) < 0)
         return -1;
 
@@ -606,6 +622,8 @@ syntatic_while(struct syntatic_ctx *ctx)
 static int
 syntatic_if(struct syntatic_ctx *ctx)
 {
+    MATCH_OR_ERROR(ctx, TOKEN_IF);
+
     if (syntatic_paren_exp(ctx) < 0)
         return -1;
 
