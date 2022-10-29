@@ -52,7 +52,13 @@ main(void)
 {
     struct code_generator code_generator;
     codegen_init(&code_generator);
+
+    codegen_add_constant(
+        &code_generator, SYMBOL_TYPE_STRING, "\"Hello, World!\"");
+    codegen_add_constant(&code_generator, SYMBOL_TYPE_FLOATING_POINT, "3.45");
+
     codegen_dump_to_file(&code_generator, "a.asm");
+
 #if defined(WAIT_ATTACH)
     static volatile uint8_t _waiting_for_debug = 1;
 
