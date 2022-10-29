@@ -28,8 +28,8 @@ for file in $(ls $MUST_COMP); do
 
     ./build/l-compiler < $MUST_COMP/$file &> /dev/null
 
-    # Make sure the compiler exit with non zero status.
-    if [ "$?" -ne 0 ]; then
+    # Make sure the compiler exit with zero status.
+    if [ "$?" -eq 0 ]; then
         printf "$GREEN Ok"
     else
         printf "$RED Error"
