@@ -22,6 +22,7 @@ struct codegen_constant
 {
     enum symbol_type type;
     uint8_t has_minus;
+    uint64_t address;
     char value[MAX_VALUE_SIZE];
     struct codegen_constant *next;
 };
@@ -30,20 +31,52 @@ static struct codegen_constant *constants;
 static FILE *file;
 
 static uint64_t
+get_next_address(uint64_t size)
+{
+    static uint64_t current_data_address;
+
+    const uint64_t address = current_data_address;
+    current_data_address += size;
+
+    return address;
+}
+
+static uint64_t
+size_from_type_or_lexeme(enum symbol_type type, uint32_t lexeme_size)
+{
+    switch (type) {
+        case SYMBOL_TYPE_FLOATING_POINT:
+        case SYMBOL_TYPE_INTEGER:
+            return 4;
+        case SYMBOL_TYPE_CHAR:
+        case SYMBOL_TYPE_LOGIC:
+            return 1;
+        case SYMBOL_TYPE_STRING:
+            // String's lexeme is inside quotation marks. -2
+            // In memory, it will have a \0 at the end. +1
+            return lexeme_size - 1;
+        default:
+            UNREACHABLE();
+    }
+}
+
+static uint64_t
 codegen_constant_init(struct codegen_constant *c,
                       enum symbol_type type,
                       uint8_t has_minus,
-                      const char *value)
+                      const char *lexeme,
+                      uint32_t lexeme_size)
 {
+    assert(lexeme_size <= MAX_VALUE_SIZE);
+
     memset(c, 0, sizeof(*c));
 
     c->type = type;
     c->has_minus = has_minus;
-    strncpy(c->value, value, MAX_VALUE_SIZE);
+    strncpy(c->value, lexeme, MAX_VALUE_SIZE);
 
-    // TODO: Ask generator for a new address.
-
-    return 0;
+    c->address = get_next_address(size_from_type_or_lexeme(type, lexeme_size));
+    return c->address;
 }
 
 static void
@@ -87,6 +120,7 @@ dump_constants(void)
         return;
 
     fputs("section .data\n", file);
+    fputs("DATA:\n", file);
 
     const struct codegen_constant *c = constants;
     while (c) {
@@ -113,20 +147,20 @@ dump_constants(void)
                     fputc('1', file);
                 else
                     fputc('0', file);
-                fputc('\n', file);
                 break;
             case SYMBOL_TYPE_STRING:
-                fprintf(file, "%s,0\n", c->value);
+                fprintf(file, "%s,0", c->value);
                 break;
             case SYMBOL_TYPE_CHAR:
             case SYMBOL_TYPE_FLOATING_POINT:
             case SYMBOL_TYPE_INTEGER:
-                fprintf(file, "%s\n", c->value);
+                fputs(c->value, file);
                 break;
             default:
                 UNREACHABLE();
         }
 
+        fprintf(file, "\t; @ 0x%lx\n", c->address);
         c = c->next;
     }
 }
@@ -178,7 +212,8 @@ codegen_write_text(const char *fmt, ...)
 uint64_t
 codegen_add_constant(enum symbol_type type,
                      uint8_t has_minus,
-                     const char *value)
+                     const char *lexeme,
+                     uint32_t lexeme_size)
 {
     if (type != SYMBOL_TYPE_FLOATING_POINT && type != SYMBOL_TYPE_INTEGER &&
         has_minus)
@@ -187,7 +222,8 @@ codegen_add_constant(enum symbol_type type,
     if (!constants) {
         constants = malloc(sizeof(*constants));
         assert(constants && "failed to allocate memory for codegen_constant.");
-        return codegen_constant_init(constants, type, has_minus, value);
+        return codegen_constant_init(
+            constants, type, has_minus, lexeme, lexeme_size);
     }
 
     struct codegen_constant *previous = constants;
@@ -201,5 +237,5 @@ codegen_add_constant(enum symbol_type type,
     assert(next && "failed to allocate memory for codegen_constant.");
 
     previous->next = next;
-    return codegen_constant_init(next, type, has_minus, value);
+    return codegen_constant_init(next, type, has_minus, lexeme, lexeme_size);
 }

@@ -637,8 +637,10 @@ syntatic_decl_const(struct syntatic_ctx *ctx)
     if (semantic_apply_sr2(id_entry, has_minus) < 0)
         return -1;
 
-    codegen_add_constant(
-        id_entry->symbol_type, has_minus, ctx->last_entry.lexeme.buffer);
+    codegen_add_constant(id_entry->symbol_type,
+                         has_minus,
+                         ctx->last_entry.lexeme.buffer,
+                         ctx->last_entry.lexeme.size);
 
     MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
     return 0;
