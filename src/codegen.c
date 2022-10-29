@@ -185,6 +185,7 @@ codegen_dump(void)
 
     add_exit_syscall(0);
     dump_constants();
+    fflush(file);
 }
 
 void

@@ -35,10 +35,60 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 static struct file file;
 static struct lexer lexer;
 static struct symbol_table table;
+
+static int
+link_object(const char *pathname)
+{
+    pid_t pid = fork();
+
+    if (pid > 0) {
+        char *const ld = "ld";
+        char *const args[] = { ld, pathname, NULL };
+
+        if (execvp("ld", args) < 0) {
+            perror("execvp");
+            return -1;
+        }
+    } else if (pid == 0) {
+        fputs("Waiting for linker...\n", ERR_STREAM);
+        if (waitpid(-1, NULL, 0) < -1)
+            perror("waitpid");
+        return 0;
+    }
+
+    perror("fork");
+    return pid;
+}
+
+static int
+assemble(const char *pathname)
+{
+    pid_t pid = fork();
+
+    if (pid > 0) {
+        char *const nasm = "nasm";
+        char *const args[] = { nasm, "-f", "elf64", pathname, NULL };
+
+        if (execvp("nasm", args) < 0) {
+            perror("execvp");
+            return -1;
+        }
+    } else if (pid == 0) {
+        fputs("Waiting for assembler...\n", ERR_STREAM);
+        if (waitpid(-1, NULL, 0) < -1)
+            perror("waitpid");
+        return 0;
+    }
+
+    perror("fork");
+    return pid;
+}
 
 static void
 cleanup(void)
@@ -77,8 +127,20 @@ main(void)
 
     if (status == 0) {
         fprintf(ERR_STREAM, "%i linhas compiladas.\n", lexer.line);
+
         symbol_table_dump_to(&table, stdout);
+
         codegen_dump();
+        codegen_destroy();
+
+        if (assemble(out_file) == 0) {
+            usleep(500 * 1000);
+            if (link_object("l.o") < 0) {
+                fputs("linking failed.\n", ERR_STREAM);
+            }
+        } else {
+            fputs("assemble failed.\n", ERR_STREAM);
+        }
     }
 
     codegen_destroy();
