@@ -3,6 +3,7 @@
 #include "utils.h"
 
 #include <assert.h>
+#include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -115,6 +116,9 @@ codegen_init(const char *pathname)
 void
 codegen_dump(void)
 {
+    if (!file)
+        return;
+
     add_exit_syscall(file, 0);
     dump_constants(file);
 }
@@ -127,6 +131,18 @@ codegen_destroy(void)
         fclose(file);
         file = NULL;
     }
+}
+
+void
+codegen_write_text(const char *fmt, ...)
+{
+    if (!file)
+        return;
+
+    va_list args;
+    va_start(args, fmt);
+    vfprintf(file, fmt, args);
+    va_end(args);
 }
 
 uint64_t

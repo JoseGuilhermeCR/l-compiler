@@ -56,6 +56,8 @@ main(void)
     codegen_add_constant(SYMBOL_TYPE_STRING, "\"Hello, World!\"");
     codegen_add_constant(SYMBOL_TYPE_FLOATING_POINT, "3.45");
 
+    codegen_write_text("\tmov rax, 0\n");
+
     codegen_dump();
     codegen_destroy();
 
