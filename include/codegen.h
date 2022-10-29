@@ -18,6 +18,8 @@ void
 codegen_write_text(const char *fmt, ...);
 
 uint64_t
-codegen_add_constant(enum symbol_type type, const char *value);
+codegen_add_constant(enum symbol_type type,
+                     uint8_t has_minus,
+                     const char *value);
 
 #endif

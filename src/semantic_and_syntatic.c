@@ -602,7 +602,8 @@ syntatic_decl_var(struct syntatic_ctx *ctx, enum token type_tok)
 
                 MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
 
-                if (semantic_apply_sr3(id_entry, ctx->last_entry.constant_type) < 0)
+                if (semantic_apply_sr3(id_entry,
+                                       ctx->last_entry.constant_type) < 0)
                     return -1;
             }
         }
@@ -635,6 +636,9 @@ syntatic_decl_const(struct syntatic_ctx *ctx)
     semantic_apply_sr5(id_entry, ctx->last_entry.constant_type);
     if (semantic_apply_sr2(id_entry, has_minus) < 0)
         return -1;
+
+    codegen_add_constant(
+        id_entry->symbol_type, has_minus, ctx->last_entry.lexeme.buffer);
 
     MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
     return 0;
@@ -742,7 +746,7 @@ syntatic_f(struct syntatic_ctx *ctx, enum symbol_type *f_type)
             uint8_t had_brackets = 0;
 
             MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
-            
+
             struct symbol *id_entry = ctx->last_entry.symbol_table_entry;
 
             if (semantic_apply_sr8(ctx->last_entry.is_new_identifier) < 0)
@@ -1113,8 +1117,6 @@ syntatic_start(struct syntatic_ctx *ctx)
             // Handle DECL_VAR and DECL_CONST.
             enum token tok = ctx->entry->token;
             MATCH_OR_ERROR(ctx, tok);
-
-            // S.R.: 4 (TODO)
 
             switch (tok) {
                 case TOKEN_INT:

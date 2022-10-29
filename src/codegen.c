@@ -15,6 +15,7 @@
 struct codegen_constant
 {
     enum symbol_type type;
+    uint8_t has_minus;
     char value[MAX_VALUE_SIZE];
     struct codegen_constant *next;
 };
@@ -25,11 +26,13 @@ static FILE *file;
 static uint64_t
 codegen_constant_init(struct codegen_constant *c,
                       enum symbol_type type,
+                      uint8_t has_minus,
                       const char *value)
 {
     memset(c, 0, sizeof(*c));
 
     c->type = type;
+    c->has_minus = has_minus;
     strncpy(c->value, value, MAX_VALUE_SIZE);
 
     // TODO: Ask generator for a new address.
@@ -38,7 +41,7 @@ codegen_constant_init(struct codegen_constant *c,
 }
 
 static void
-dump_template(FILE *file)
+dump_template(void)
 {
     time_t now = time(NULL);
 
@@ -58,7 +61,7 @@ dump_template(FILE *file)
 }
 
 static void
-add_exit_syscall(FILE *file, uint8_t error_code)
+add_exit_syscall(uint8_t error_code)
 {
     fprintf(file,
             "section .text\n"
@@ -69,7 +72,7 @@ add_exit_syscall(FILE *file, uint8_t error_code)
 }
 
 static void
-dump_constants(FILE *file)
+dump_constants(void)
 {
     if (!constants)
         return;
@@ -92,6 +95,9 @@ dump_constants(FILE *file)
                 UNREACHABLE();
         }
 
+        if (c->has_minus)
+            fputc('-', file);
+
         if (c->type != SYMBOL_TYPE_STRING)
             fprintf(file, "%s\n", c->value);
         else
@@ -108,7 +114,7 @@ codegen_init(const char *pathname)
     if (!file)
         return -1;
 
-    dump_template(file);
+    dump_template();
 
     return 0;
 }
@@ -119,8 +125,8 @@ codegen_dump(void)
     if (!file)
         return;
 
-    add_exit_syscall(file, 0);
-    dump_constants(file);
+    add_exit_syscall(0);
+    dump_constants();
 }
 
 void
@@ -146,12 +152,18 @@ codegen_write_text(const char *fmt, ...)
 }
 
 uint64_t
-codegen_add_constant(enum symbol_type type, const char *value)
+codegen_add_constant(enum symbol_type type,
+                     uint8_t has_minus,
+                     const char *value)
 {
+    if (type != SYMBOL_TYPE_FLOATING_POINT && type != SYMBOL_TYPE_INTEGER &&
+        has_minus)
+        UNREACHABLE();
+
     if (!constants) {
         constants = malloc(sizeof(*constants));
         assert(constants && "failed to allocate memory for codegen_constant.");
-        return codegen_constant_init(constants, type, value);
+        return codegen_constant_init(constants, type, has_minus, value);
     }
 
     struct codegen_constant *previous = constants;
@@ -165,5 +177,5 @@ codegen_add_constant(enum symbol_type type, const char *value)
     assert(next && "failed to allocate memory for codegen_constant.");
 
     previous->next = next;
-    return codegen_constant_init(next, type, value);
+    return codegen_constant_init(next, type, has_minus, value);
 }
