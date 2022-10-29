@@ -548,10 +548,10 @@ syntatic_match_token(struct syntatic_ctx *ctx, enum token token)
 static int
 syntatic_decl_var(struct syntatic_ctx *ctx, enum token type_tok)
 {
-    uint8_t is_new_identifier = ctx->entry->is_new_identifier;
-    struct symbol *id_entry = ctx->entry->symbol_table_entry;
-
     MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
+
+    uint8_t is_new_identifier = ctx->last_entry.is_new_identifier;
+    struct symbol *id_entry = ctx->last_entry.symbol_table_entry;
 
     if (semantic_apply_sr4(is_new_identifier) < 0)
         return -1;
@@ -567,11 +567,9 @@ syntatic_decl_var(struct syntatic_ctx *ctx, enum token type_tok)
             MATCH_OR_ERROR(ctx, TOKEN_MINUS);
         }
 
-        const enum constant_type const_type = ctx->entry->constant_type;
-
         MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
 
-        if (semantic_apply_sr3(id_entry, const_type) < 0)
+        if (semantic_apply_sr3(id_entry, ctx->last_entry.constant_type) < 0)
             return -1;
     }
 
@@ -582,10 +580,10 @@ syntatic_decl_var(struct syntatic_ctx *ctx, enum token type_tok)
         while (ctx->entry->token == TOKEN_COMMA) {
             MATCH_OR_ERROR(ctx, TOKEN_COMMA);
 
-            id_entry = ctx->entry->symbol_table_entry;
-            is_new_identifier = ctx->entry->is_new_identifier;
-
             MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
+
+            id_entry = ctx->last_entry.symbol_table_entry;
+            is_new_identifier = ctx->last_entry.is_new_identifier;
 
             if (semantic_apply_sr4(is_new_identifier) < 0)
                 return -1;
@@ -602,11 +600,9 @@ syntatic_decl_var(struct syntatic_ctx *ctx, enum token type_tok)
                     MATCH_OR_ERROR(ctx, TOKEN_MINUS);
                 }
 
-                const enum constant_type const_type = ctx->entry->constant_type;
-
                 MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
 
-                if (semantic_apply_sr3(id_entry, const_type) < 0)
+                if (semantic_apply_sr3(id_entry, ctx->last_entry.constant_type) < 0)
                     return -1;
             }
         }
@@ -623,9 +619,10 @@ static int
 syntatic_decl_const(struct syntatic_ctx *ctx)
 {
     uint8_t has_minus = 0;
-    struct symbol *id_entry = ctx->entry->symbol_table_entry;
 
     MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
+    struct symbol *id_entry = ctx->last_entry.symbol_table_entry;
+
     MATCH_OR_ERROR(ctx, TOKEN_EQUAL);
 
     if (ctx->entry->token == TOKEN_MINUS) {
@@ -633,11 +630,9 @@ syntatic_decl_const(struct syntatic_ctx *ctx)
         has_minus = 1;
     }
 
-    enum constant_type const_type = ctx->entry->constant_type;
-
     MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
 
-    semantic_apply_sr5(id_entry, const_type);
+    semantic_apply_sr5(id_entry, ctx->last_entry.constant_type);
     if (semantic_apply_sr2(id_entry, has_minus) < 0)
         return -1;
 
@@ -651,15 +646,12 @@ syntatic_read(struct syntatic_ctx *ctx)
     MATCH_OR_ERROR(ctx, TOKEN_READLN);
     MATCH_OR_ERROR(ctx, TOKEN_OPENING_PAREN);
 
-    const uint8_t is_new_identifier = ctx->entry->is_new_identifier;
-    struct symbol *id_entry = ctx->entry->symbol_table_entry;
-
     MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
 
-    if (semantic_apply_sr8(is_new_identifier) < 0)
+    if (semantic_apply_sr8(ctx->last_entry.is_new_identifier) < 0)
         return -1;
 
-    if (semantic_apply_sr10(id_entry) < 0)
+    if (semantic_apply_sr10(ctx->last_entry.symbol_table_entry) < 0)
         return -1;
 
     MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);
@@ -742,19 +734,18 @@ syntatic_f(struct syntatic_ctx *ctx, enum symbol_type *f_type)
             break;
         }
         case TOKEN_CONSTANT: {
-            enum constant_type const_type = ctx->entry->constant_type;
             MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
-            semantic_apply_sr18(f_type, const_type);
+            semantic_apply_sr18(f_type, ctx->last_entry.constant_type);
             break;
         }
         case TOKEN_IDENTIFIER: {
-            struct symbol *id_entry = ctx->entry->symbol_table_entry;
-            const uint8_t is_new_identifier = ctx->entry->is_new_identifier;
             uint8_t had_brackets = 0;
 
             MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
+            
+            struct symbol *id_entry = ctx->last_entry.symbol_table_entry;
 
-            if (semantic_apply_sr8(is_new_identifier) < 0)
+            if (semantic_apply_sr8(ctx->last_entry.is_new_identifier) < 0)
                 return -1;
 
             if (ctx->entry->token == TOKEN_OPENING_SQUARE_BRACKET) {
@@ -903,12 +894,12 @@ static int
 syntatic_attr(struct syntatic_ctx *ctx)
 {
     enum symbol_type type = SYMBOL_TYPE_NONE;
-    const uint8_t is_new_identifier = ctx->entry->is_new_identifier;
-    struct symbol *id_entry = ctx->entry->symbol_table_entry;
 
     MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
 
-    if (semantic_apply_sr8(is_new_identifier) < 0)
+    struct symbol *id_entry = ctx->last_entry.symbol_table_entry;
+
+    if (semantic_apply_sr8(ctx->last_entry.is_new_identifier) < 0)
         return -1;
 
     if (semantic_apply_sr10(id_entry) < 0)
