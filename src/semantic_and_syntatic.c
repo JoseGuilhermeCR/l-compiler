@@ -35,6 +35,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 
 static uint8_t
 is_st_arithmetic(enum symbol_type type)
@@ -519,6 +520,8 @@ syntatic_match_token(struct syntatic_ctx *ctx, enum token token)
     }
 
     if (ctx->entry->token == token) {
+        memcpy(&ctx->last_entry, ctx->entry, sizeof(*ctx->entry));
+
         enum lexer_result result = lexer_get_next_token(ctx->lexer, ctx->entry);
         if (result == LEXER_RESULT_ERROR) {
             lexer_print_error(ctx->lexer);

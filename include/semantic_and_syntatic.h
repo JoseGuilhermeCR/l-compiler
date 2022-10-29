@@ -44,6 +44,7 @@ struct syntatic_ctx
 {
     struct lexer *lexer;
     struct lexical_entry *entry;
+    struct lexical_entry last_entry;
     uint8_t found_last_token;
 };
 
