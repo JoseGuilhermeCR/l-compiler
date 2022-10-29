@@ -335,6 +335,19 @@ semantic_apply_sr10(struct symbol *symbol)
 }
 
 static int
+semantic_apply_sr9(struct symbol *id_entry, enum symbol_type exp_type)
+{
+    assert(id_entry &&
+            "A NULL symbol means this was probably not an IDENTIFIER.");
+    if (id_entry->symbol_type != exp_type) {
+        fputs("Tipos incompativeis", ERR_STREAM);
+        return -1;
+    }
+
+    return 0;
+}
+
+static int
 semantic_apply_sr8(uint8_t is_new_identifier)
 {
     if (is_new_identifier) {
@@ -911,6 +924,8 @@ syntatic_attr(struct syntatic_ctx *ctx)
 
     MATCH_OR_ERROR(ctx, TOKEN_ASSIGNMENT);
     if (syntatic_exp(ctx, &type) < 0)
+        return -1;
+    if (semantic_apply_sr9(id_entry, type) < 0)
         return -1;
     MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
     return 0;
