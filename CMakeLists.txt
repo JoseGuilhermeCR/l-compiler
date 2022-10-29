@@ -13,6 +13,7 @@ add_executable(l-compiler
 	"src/lexer.c"
 	"src/file.c"
     "src/codegen.c"
+    "src/utils.c"
 	"include/symbol_table.h"
 	"include/semantic_and_syntatic.h"
     "include/lexer.h"

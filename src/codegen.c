@@ -12,6 +12,12 @@
 
 #define MAX_VALUE_SIZE 256
 
+/* FIXME's
+ * Align the variables and constants in memory?
+ * Use better instructions.
+ * Separate constant data into .ro_data.
+ * */
+
 struct codegen_constant
 {
     enum symbol_type type;
@@ -51,6 +57,9 @@ dump_template(void)
     fprintf(file,
             "; Generated on %04u/%02u/%02u - %02u:%02u\n"
             "global _start\n"
+            "section .bss\n"
+            "TMPMEM:\n"
+            "\tresb 0x10000\n"
             "section .text\n"
             "_start:\n",
             tm.tm_year + 1900,
@@ -77,7 +86,7 @@ dump_constants(void)
     if (!constants)
         return;
 
-    fputs("section .rodata\n", file);
+    fputs("section .data\n", file);
 
     const struct codegen_constant *c = constants;
     while (c) {
@@ -98,10 +107,25 @@ dump_constants(void)
         if (c->has_minus)
             fputc('-', file);
 
-        if (c->type != SYMBOL_TYPE_STRING)
-            fprintf(file, "%s\n", c->value);
-        else
-            fprintf(file, "%s,0\n", c->value);
+        switch (c->type) {
+            case SYMBOL_TYPE_LOGIC:
+                if (is_case_insensitive_equal("true", c->value))
+                    fputc('1', file);
+                else
+                    fputc('0', file);
+                fputc('\n', file);
+                break;
+            case SYMBOL_TYPE_STRING:
+                fprintf(file, "%s,0\n", c->value);
+                break;
+            case SYMBOL_TYPE_CHAR:
+            case SYMBOL_TYPE_FLOATING_POINT:
+            case SYMBOL_TYPE_INTEGER:
+                fprintf(file, "%s\n", c->value);
+                break;
+            default:
+                UNREACHABLE();
+        }
 
         c = c->next;
     }

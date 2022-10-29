@@ -30,10 +30,14 @@
 #define UTILS_H_
 
 #include <assert.h>
+#include <stdint.h>
 
 #define UNREACHABLE()                                                          \
     do {                                                                       \
         assert(0 && "Should never be reached.");                               \
     } while (0)
+
+uint8_t
+is_case_insensitive_equal(const char *lhs, const char *rhs);
 
 #endif
