@@ -338,7 +338,7 @@ static int
 semantic_apply_sr9(struct symbol *id_entry, enum symbol_type exp_type)
 {
     assert(id_entry &&
-            "A NULL symbol means this was probably not an IDENTIFIER.");
+           "A NULL symbol means this was probably not an IDENTIFIER.");
     if (id_entry->symbol_type != exp_type) {
         fputs("Tipos incompativeis", ERR_STREAM);
         return -1;

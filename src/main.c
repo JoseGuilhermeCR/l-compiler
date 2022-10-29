@@ -26,6 +26,7 @@
  * Jose Guilherme de Castro Rodrigues - 2022 - 651201
  */
 
+#include "codegen.h"
 #include "file.h"
 #include "lexer.h"
 #include "semantic_and_syntatic.h"
@@ -49,6 +50,9 @@ cleanup(void)
 int
 main(void)
 {
+    struct code_generator code_generator;
+    codegen_init(&code_generator);
+    codegen_dump_to_file(&code_generator, "a.asm");
 #if defined(WAIT_ATTACH)
     static volatile uint8_t _waiting_for_debug = 1;
 

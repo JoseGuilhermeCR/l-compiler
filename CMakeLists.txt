@@ -12,12 +12,14 @@ add_executable(l-compiler
 	"src/semantic_and_syntatic.c"
 	"src/lexer.c"
 	"src/file.c"
+    "src/codegen.c"
 	"include/symbol_table.h"
 	"include/semantic_and_syntatic.h"
     "include/lexer.h"
 	"include/file.h"
 	"include/token.h"
 	"include/utils.h"
+    "include/codegen.h"
 )
 
 target_include_directories(l-compiler PRIVATE "include/")
