@@ -51,22 +51,8 @@ cleanup(void)
 int
 main(void)
 {
-    codegen_init("a.asm");
-
-    codegen_add_constant(SYMBOL_TYPE_STRING, "\"Hello, World!\"");
-    codegen_add_constant(SYMBOL_TYPE_FLOATING_POINT, "3.45");
-
-    codegen_write_text("\tmov rax, 0\n");
-
-    codegen_dump();
-    codegen_destroy();
-
-#if defined(WAIT_ATTACH)
-    static volatile uint8_t _waiting_for_debug = 1;
-
-    while (_waiting_for_debug)
-        ;
-#endif
+    const char *out_file = "l.asm";
+    codegen_init(out_file);
 
     assert(atexit(cleanup) == 0);
 
@@ -77,24 +63,24 @@ main(void)
 
     lexer_init(&lexer, &file, &table);
 
+    int status = -1;
+
     struct lexical_entry entry;
     enum lexer_result result = lexer_get_next_token(&lexer, &entry);
     if (result == LEXER_RESULT_FOUND) {
         struct syntatic_ctx syntatic_ctx;
         syntatic_init(&syntatic_ctx, &lexer, &entry);
-
-        int result = syntatic_start(&syntatic_ctx);
-        symbol_table_dump_to(&table, stdout);
-
-        if (result == 0) {
-            fprintf(ERR_STREAM, "%i linhas compiladas.\n", lexer.line);
-        }
-
-        return result;
+        status = syntatic_start(&syntatic_ctx);
     } else if (result != LEXER_RESULT_EMPTY) {
         lexer_print_error(&lexer);
-        return -1;
     }
 
-    return 0;
+    if (status == 0) {
+        fprintf(ERR_STREAM, "%i linhas compiladas.\n", lexer.line);
+        symbol_table_dump_to(&table, stdout);
+        codegen_dump();
+    }
+
+    codegen_destroy();
+    return status;
 }
