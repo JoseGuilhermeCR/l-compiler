@@ -43,6 +43,7 @@ static struct symbol_table table;
 static void
 cleanup(void)
 {
+    codegen_destroy();
     symbol_table_destroy(&table);
     destroy_stdin_file(&file);
 }
@@ -50,14 +51,13 @@ cleanup(void)
 int
 main(void)
 {
-    struct code_generator code_generator;
-    codegen_init(&code_generator);
+    codegen_init("a.asm");
 
-    codegen_add_constant(
-        &code_generator, SYMBOL_TYPE_STRING, "\"Hello, World!\"");
-    codegen_add_constant(&code_generator, SYMBOL_TYPE_FLOATING_POINT, "3.45");
+    codegen_add_constant(SYMBOL_TYPE_STRING, "\"Hello, World!\"");
+    codegen_add_constant(SYMBOL_TYPE_FLOATING_POINT, "3.45");
 
-    codegen_dump_to_file(&code_generator, "a.asm");
+    codegen_dump();
+    codegen_destroy();
 
 #if defined(WAIT_ATTACH)
     static volatile uint8_t _waiting_for_debug = 1;

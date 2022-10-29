@@ -29,6 +29,7 @@
 #ifndef SEMANTIC_AND_SYNTATIC_H_
 #define SEMANTIC_AND_SYNTATIC_H_
 
+#include "codegen.h"
 #include "lexer.h"
 
 #include <stdint.h>

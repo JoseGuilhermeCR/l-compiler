@@ -5,25 +5,16 @@
 
 #include <stdint.h>
 
-struct codegen_constant;
-
-struct code_generator
-{
-    struct codegen_constant *constants;
-};
-
 int
-codegen_init(struct code_generator *generator);
+codegen_init(const char *pathname);
 
 void
-codegen_destro(struct code_generator *generator);
+codegen_dump(void);
 
-int
-codegen_dump_to_file(struct code_generator *generator, const char *pathname);
+void
+codegen_destroy(void);
 
 uint64_t
-codegen_add_constant(struct code_generator *generator,
-                     enum symbol_type type,
-                     const char *value);
+codegen_add_constant(enum symbol_type type, const char *value);
 
 #endif

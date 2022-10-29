@@ -18,9 +18,11 @@ struct codegen_constant
     struct codegen_constant *next;
 };
 
+static struct codegen_constant *constants;
+static FILE *file;
+
 static uint64_t
-codegen_constant_init(struct code_generator *generator,
-                      struct codegen_constant *c,
+codegen_constant_init(struct codegen_constant *c,
                       enum symbol_type type,
                       const char *value)
 {
@@ -66,14 +68,14 @@ add_exit_syscall(FILE *file, uint8_t error_code)
 }
 
 static void
-dump_constants(struct code_generator *generator, FILE *file)
+dump_constants(FILE *file)
 {
-    if (!generator->constants)
+    if (!constants)
         return;
 
     fputs("section .rodata\n", file);
 
-    const struct codegen_constant *c = generator->constants;
+    const struct codegen_constant *c = constants;
     while (c) {
         switch (c->type) {
             case SYMBOL_TYPE_LOGIC:
@@ -99,50 +101,45 @@ dump_constants(struct code_generator *generator, FILE *file)
 }
 
 int
-codegen_init(struct code_generator *generator)
+codegen_init(const char *pathname)
 {
-    generator->constants = NULL;
+    file = fopen(pathname, "w");
+    if (!file)
+        return -1;
+
+    dump_template(file);
+
     return 0;
 }
 
 void
-codegen_destroy(struct code_generator *generator)
+codegen_dump(void)
 {
-    // TODO(Jose): Free constants.
+    add_exit_syscall(file, 0);
+    dump_constants(file);
 }
 
-int
-codegen_dump_to_file(struct code_generator *generator, const char *pathname)
+void
+codegen_destroy(void)
 {
-    FILE *file = fopen(pathname, "w");
-    if (!file) {
-        // TODO(Jose): Report error.
-        return -1;
+    // TODO(Jose): Free constants.
+    if (file) {
+        fclose(file);
+        file = NULL;
     }
-
-    dump_template(file);
-    add_exit_syscall(file, 0);
-    dump_constants(generator, file);
-
-    fclose(file);
-    return 0;
 }
 
 uint64_t
-codegen_add_constant(struct code_generator *generator,
-                     enum symbol_type type,
-                     const char *value)
+codegen_add_constant(enum symbol_type type, const char *value)
 {
-    if (!generator->constants) {
-        generator->constants = malloc(sizeof(*generator->constants));
-        assert(generator->constants &&
-               "failed to allocate memory for codegen_constant.");
-        return codegen_constant_init(
-            generator, generator->constants, type, value);
+    if (!constants) {
+        constants = malloc(sizeof(*constants));
+        assert(constants && "failed to allocate memory for codegen_constant.");
+        return codegen_constant_init(constants, type, value);
     }
 
-    struct codegen_constant *previous = generator->constants;
-    struct codegen_constant *next = generator->constants->next;
+    struct codegen_constant *previous = constants;
+    struct codegen_constant *next = constants->next;
     while (next) {
         previous = next;
         next = next->next;
@@ -152,5 +149,5 @@ codegen_add_constant(struct code_generator *generator,
     assert(next && "failed to allocate memory for codegen_constant.");
 
     previous->next = next;
-    return codegen_constant_init(generator, next, type, value);
+    return codegen_constant_init(next, type, value);
 }
