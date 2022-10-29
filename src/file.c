@@ -49,18 +49,30 @@ read_file_from_stdin(struct file *file, uint32_t capacity)
     }
     file->buffer[file->size] = '\0';
 
-    // Removing <CR><LF> from files.
-    char *ending = NULL;
-    if (strstr(file->buffer, "\r\n")) {
-        fputs("Processing \\r\\n...\n", ERR_STREAM);
-        ending = strstr(file->buffer, "\r\n");
-        while (ending) {
-            ending[0] = '\n';
-            ending[1] = ' ';
-            ending = strstr(ending, "\r\n");
-        }
+    return 0;
+}
+
+int
+read_file(struct file *file, const char *pathname)
+{
+    FILE *stream = fopen(pathname, "r");
+    if (!stream)
+        return -1;
+
+    fseek(stream, 0, SEEK_END);
+    uint64_t size = ftell(stream);
+    fseek(stream, 0, SEEK_SET);
+
+    file->size = size;
+    file->buffer = malloc(size);
+    if (!file->buffer) {
+        fclose(stream);
+        return -1;
     }
 
+    fread(file->buffer, 1, file->size, stream);
+
+    fclose(stream);
     return 0;
 }
 

@@ -40,6 +40,9 @@ struct file
 int
 read_file_from_stdin(struct file *file, uint32_t capacity);
 
+int
+read_file(struct file *file, const char *pathname);
+
 void
 destroy_stdin_file(struct file *file);
 

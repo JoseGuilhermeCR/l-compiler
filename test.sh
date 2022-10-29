@@ -11,7 +11,7 @@ RED="\033[38;2;255;0;0m"
 for file in $(ls $MUST_FAIL); do
     printf "Running $MUST_FAIL/$file..."
 
-    ./build/l-compiler < $MUST_FAIL/$file &> /dev/null
+    ./build/l-compiler $MUST_FAIL/$file &> /dev/null
 
     # Make sure the compiler exit with non zero status.
     if [ "$?" -ne 0 ]; then
@@ -26,7 +26,7 @@ done
 for file in $(ls $MUST_COMP); do
     printf "Running $MUST_COMP/$file..."
 
-    ./build/l-compiler < $MUST_COMP/$file &> /dev/null
+    ./build/l-compiler $MUST_COMP/$file &> /dev/null
 
     # Make sure the compiler exit with zero status.
     if [ "$?" -eq 0 ]; then

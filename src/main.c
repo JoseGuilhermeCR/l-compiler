@@ -99,14 +99,19 @@ cleanup(void)
 }
 
 int
-main(void)
+main(int argc, const char *argv[])
 {
+    if (argc < 2) {
+        fputs("Please provide an l source file.\n", ERR_STREAM);
+        return -1;
+    }
+
     const char *out_file = "l.asm";
     codegen_init(out_file);
 
     assert(atexit(cleanup) == 0);
 
-    assert(read_file_from_stdin(&file, MAX_FILE_SIZE) == 0);
+    assert(read_file(&file, argv[1]) == 0);
 
     assert(symbol_table_create(&table, 64) == 0);
     symbol_table_populate_with_keywords(&table);
