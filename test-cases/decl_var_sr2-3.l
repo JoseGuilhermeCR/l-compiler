@@ -1,1 +1,0 @@
-boolean var := -false;
