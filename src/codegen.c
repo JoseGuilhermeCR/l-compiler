@@ -20,15 +20,15 @@
 
 static FILE *file;
 
+static uint64_t current_data_address;
+static uint64_t current_bss_address;
+
 static uint64_t
-get_next_address(uint64_t size)
+get_next_address(uint64_t *address, uint64_t size)
 {
-    static uint64_t current_data_address;
-
-    const uint64_t address = current_data_address;
-    current_data_address += size;
-
-    return address;
+    const uint64_t tmp = *address;
+    *address += size;
+    return tmp;
 }
 
 static uint64_t
@@ -140,7 +140,7 @@ codegen_add_unnit_value(enum symbol_type type)
     else
         size = 256;
 
-    const uint64_t address = get_next_address(size);
+    const uint64_t address = get_next_address(&current_bss_address, size);
     fputs("section .bss\n", file);
     fprintf(file, "\tresb %lu\t; @ 0x%lx\n", size, address);
 
@@ -159,7 +159,7 @@ codegen_add_value(enum symbol_type type,
     }
 
     const uint64_t address =
-        get_next_address(size_from_type_or_lexeme(type, lexeme_size));
+        get_next_address(&current_data_address, size_from_type_or_lexeme(type, lexeme_size));
 
     fputs("section .data\n", file);
 
