@@ -107,7 +107,8 @@ main(int argc, const char *argv[])
     assert(atexit(cleanup) == 0);
 
     if (argc < 2) {
-        fputs("Usando entrada do terminal já que nenhum arquivo foi passado.\n", ERR_STREAM);
+        fputs("Usando entrada do terminal já que nenhum arquivo foi passado.\n",
+              ERR_STREAM);
         assert(read_file_from_stdin(&file, MAX_FILE_SIZE) == 0);
     } else {
         assert(read_file(&file, argv[1]) == 0);
@@ -138,14 +139,14 @@ main(int argc, const char *argv[])
         codegen_dump();
         codegen_destroy();
 
-      //  if (assemble(out_file) == 0) {
-      //      usleep(500 * 1000);
-      //      if (link_object("l.o") < 0) {
-      //          fputs("linking failed.\n", ERR_STREAM);
-      //      }
-      //  } else {
-      //      fputs("assemble failed.\n", ERR_STREAM);
-      //  }
+        //  if (assemble(out_file) == 0) {
+        //      usleep(500 * 1000);
+        //      if (link_object("l.o") < 0) {
+        //          fputs("linking failed.\n", ERR_STREAM);
+        //      }
+        //  } else {
+        //      fputs("assemble failed.\n", ERR_STREAM);
+        //  }
     }
 
     codegen_destroy();

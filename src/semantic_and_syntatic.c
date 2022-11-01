@@ -37,7 +37,8 @@
 #include <stdio.h>
 #include <string.h>
 
-enum semantic_result {
+enum semantic_result
+{
     SEMANTIC_OK,
     SEMANTIC_ERROR_TYPE_MISMATCH,
     SEMANTIC_ERROR_CLASS_MISMATCH,
@@ -56,8 +57,7 @@ semantic_print_error(struct syntatic_ctx *ctx, enum semantic_result sr)
                     ctx->last_entry.lexeme.buffer);
             break;
         case SEMANTIC_ERROR_TYPE_MISMATCH:
-            fprintf(ERR_STREAM,
-                    "Tipos incompatíveis.\n");
+            fprintf(ERR_STREAM, "Tipos incompatíveis.\n");
             break;
         case SEMANTIC_ERROR_ID_ALREADY_DECLARED:
             fprintf(ERR_STREAM,
@@ -74,13 +74,13 @@ semantic_print_error(struct syntatic_ctx *ctx, enum semantic_result sr)
     }
 }
 
-#define HANDLE_SEMANTIC_RESULT(ctx_ptr, semantic_fn_call) \
-    do { \
-        const enum semantic_result _sr = semantic_fn_call;\
-        if (_sr != SEMANTIC_OK) { \
-            semantic_print_error((ctx_ptr), _sr);\
-            return -1;\
-        } \
+#define HANDLE_SEMANTIC_RESULT(ctx_ptr, semantic_fn_call)                      \
+    do {                                                                       \
+        const enum semantic_result _sr = semantic_fn_call;                     \
+        if (_sr != SEMANTIC_OK) {                                              \
+            semantic_print_error((ctx_ptr), _sr);                              \
+            return -1;                                                         \
+        }                                                                      \
     } while (0)
 
 static uint8_t
@@ -199,7 +199,7 @@ semantic_apply_sr24(enum token operation_tok,
                     return SEMANTIC_ERROR_TYPE_MISMATCH;
                 }
             } else {
-                    return SEMANTIC_ERROR_TYPE_MISMATCH;
+                return SEMANTIC_ERROR_TYPE_MISMATCH;
             }
             break;
         case TOKEN_DIV:
@@ -211,7 +211,7 @@ semantic_apply_sr24(enum token operation_tok,
                     return SEMANTIC_ERROR_TYPE_MISMATCH;
                 }
             } else {
-                    return SEMANTIC_ERROR_TYPE_MISMATCH;
+                return SEMANTIC_ERROR_TYPE_MISMATCH;
             }
             break;
         case TOKEN_DIVISION:
@@ -221,7 +221,7 @@ semantic_apply_sr24(enum token operation_tok,
                     *t_type = SYMBOL_TYPE_FLOATING_POINT;
                 }
             } else {
-                    return SEMANTIC_ERROR_TYPE_MISMATCH;
+                return SEMANTIC_ERROR_TYPE_MISMATCH;
             }
             break;
         default:
@@ -566,7 +566,8 @@ syntatic_decl_var(struct syntatic_ctx *ctx, enum token type_tok)
 
         MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
 
-        HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr3(id_entry, ctx->last_entry.constant_type));
+        HANDLE_SEMANTIC_RESULT(
+            ctx, semantic_apply_sr3(id_entry, ctx->last_entry.constant_type));
     }
 
     if (ctx->entry->token == TOKEN_SEMICOLON) {
@@ -591,13 +592,16 @@ syntatic_decl_var(struct syntatic_ctx *ctx, enum token type_tok)
                 MATCH_OR_ERROR(ctx, TOKEN_ASSIGNMENT);
 
                 if (ctx->entry->token == TOKEN_MINUS) {
-                    HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr2(id_entry, 1));
+                    HANDLE_SEMANTIC_RESULT(ctx,
+                                           semantic_apply_sr2(id_entry, 1));
                     MATCH_OR_ERROR(ctx, TOKEN_MINUS);
                 }
 
                 MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
 
-                HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr3(id_entry,
+                HANDLE_SEMANTIC_RESULT(
+                    ctx,
+                    semantic_apply_sr3(id_entry,
                                        ctx->last_entry.constant_type));
             }
         }
@@ -651,9 +655,11 @@ syntatic_read(struct syntatic_ctx *ctx)
 
     MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
 
-    HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr8(ctx->last_entry.is_new_identifier));
+    HANDLE_SEMANTIC_RESULT(
+        ctx, semantic_apply_sr8(ctx->last_entry.is_new_identifier));
 
-    HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr10(ctx->last_entry.symbol_table_entry));
+    HANDLE_SEMANTIC_RESULT(
+        ctx, semantic_apply_sr10(ctx->last_entry.symbol_table_entry));
 
     MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);
     MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
@@ -824,7 +830,8 @@ syntatic_exps(struct syntatic_ctx *ctx, enum symbol_type *exps_type)
         if (syntatic_t(ctx, &t_type) < 0)
             return -1;
 
-        HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr25(tok, exps_type, t_type));
+        HANDLE_SEMANTIC_RESULT(ctx,
+                               semantic_apply_sr25(tok, exps_type, t_type));
 
         tok = ctx->entry->token;
     }
@@ -852,7 +859,8 @@ syntatic_exp(struct syntatic_ctx *ctx, enum symbol_type *exp_type)
             MATCH_OR_ERROR(ctx, ctx->entry->token);
             if (syntatic_exps(ctx, &exps_type) < 0)
                 return -1;
-            HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr26(operation_tok, exp_type, exps_type));
+            HANDLE_SEMANTIC_RESULT(
+                ctx, semantic_apply_sr26(operation_tok, exp_type, exps_type));
             break;
         }
         default:
