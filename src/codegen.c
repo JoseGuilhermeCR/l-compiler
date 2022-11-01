@@ -148,6 +148,7 @@ codegen_add_unnit_value(struct symbol *id_entry)
     fprintf(file, "\tresb %lu\t; @ 0x%lx\n", size, address);
 
     id_entry->address = address;
+    id_entry->symbol_section = SYMBOL_SECTION_BSS;
 }
 
 void
@@ -167,9 +168,11 @@ codegen_add_value(struct symbol *id_entry,
     uint64_t *addr_counter;
     const char *section_name;
     if (id_entry->symbol_class == SYMBOL_CLASS_VAR) {
+        id_entry->symbol_section = SYMBOL_SECTION_DATA;
         addr_counter = &current_data_address;
         section_name = ".data";
     } else if (id_entry->symbol_class == SYMBOL_CLASS_CONST) {
+        id_entry->symbol_section = SYMBOL_SECTION_RODATA;
         addr_counter = &current_rodata_address;
         section_name = ".rodata";
     } else {

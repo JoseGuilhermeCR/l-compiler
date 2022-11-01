@@ -51,6 +51,14 @@ enum symbol_type
     SYMBOL_TYPE_CHAR
 };
 
+enum symbol_section
+{
+    SYMBOL_SECTION_NONE,
+    SYMBOL_SECTION_DATA,
+    SYMBOL_SECTION_BSS,
+    SYMBOL_SECTION_RODATA,
+};
+
 /**
  * @brief A symbol that belongs to the symbol table.
  * Each symbol may be linked in a singly linked list.
@@ -61,6 +69,7 @@ struct symbol
     enum token token;
     enum symbol_class symbol_class;
     enum symbol_type symbol_type;
+    enum symbol_section symbol_section;
     uint64_t address;
     struct symbol *next;
 };

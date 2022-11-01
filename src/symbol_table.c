@@ -71,6 +71,23 @@ symbol_type_to_str(enum symbol_type st)
     }
 }
 
+static const char *
+symbol_section_to_str(enum symbol_section ss)
+{
+    switch (ss) {
+        case SYMBOL_SECTION_NONE:
+            return "NONE";
+        case SYMBOL_SECTION_DATA:
+            return "DATA";
+        case SYMBOL_SECTION_BSS:
+            return "BSS";
+        case SYMBOL_SECTION_RODATA:
+            return "RODATA";
+        default:
+            UNREACHABLE();
+    }
+}
+
 static void
 symbol_init(struct symbol *s, const char *lexeme, enum token token)
 {
@@ -80,6 +97,7 @@ symbol_init(struct symbol *s, const char *lexeme, enum token token)
     s->token = token;
     s->symbol_class = SYMBOL_CLASS_NONE;
     s->symbol_type = SYMBOL_TYPE_NONE;
+    s->symbol_section = SYMBOL_SECTION_NONE;
     s->next = NULL;
 }
 
@@ -87,6 +105,8 @@ static void
 symbol_print(struct symbol *s, FILE *file)
 {
     fprintf(file, "@: %p\t", s);
+    fprintf(file, "Section: %s\t", symbol_section_to_str(s->symbol_section));
+    fprintf(file, "Address: 0x%lx\t", s->address);
     fprintf(file, "Class: %s\t", symbol_class_to_str(s->symbol_class));
     fprintf(file, "Type: %s\t", symbol_type_to_str(s->symbol_type));
     fprintf(file, "Lexeme: %s\n", s->lexeme);
