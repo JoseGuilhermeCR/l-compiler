@@ -64,8 +64,9 @@ dump_template(void)
             "section .bss\n"
             "TMP:\n"
             "\tresb 0x10000\n"
+            "UNNIT_MEM:\n"
             "section .data\n"
-            "M:\n"
+            "INIT_MEM:\n"
             "section .text\n"
             "_start:\n",
             tm.tm_year + 1900,
@@ -131,10 +132,26 @@ codegen_write_text(const char *fmt, ...)
 }
 
 uint64_t
-codegen_add_constant(enum symbol_type type,
-                     uint8_t has_minus,
-                     const char *lexeme,
-                     uint32_t lexeme_size)
+codegen_add_unnit_value(enum symbol_type type)
+{
+    uint64_t size;
+    if (type != SYMBOL_TYPE_STRING)
+        size = size_from_type_or_lexeme(type, 0);
+    else
+        size = 256;
+
+    const uint64_t address = get_next_address(size);
+    fputs("section .bss\n", file);
+    fprintf(file, "\tresb %lu\t; @ 0x%lx\n", size, address);
+
+    return address;
+}
+
+uint64_t
+codegen_add_value(enum symbol_type type,
+                  uint8_t has_minus,
+                  const char *lexeme,
+                  uint32_t lexeme_size)
 {
     if (type != SYMBOL_TYPE_FLOATING_POINT && type != SYMBOL_TYPE_INTEGER &&
         has_minus) {

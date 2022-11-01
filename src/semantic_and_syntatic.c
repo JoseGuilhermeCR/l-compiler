@@ -28,6 +28,7 @@
 
 #include "semantic_and_syntatic.h"
 
+#include "codegen.h"
 #include "lexer.h"
 #include "symbol_table.h"
 #include "token.h"
@@ -638,10 +639,11 @@ syntatic_decl_const(struct syntatic_ctx *ctx)
     semantic_apply_sr5(id_entry, ctx->last_entry.constant_type);
     HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr2(id_entry, has_minus));
 
-    codegen_add_constant(id_entry->symbol_type,
-                         has_minus,
-                         ctx->last_entry.lexeme.buffer,
-                         ctx->last_entry.lexeme.size);
+    codegen_add_unnit_value(id_entry->symbol_type);
+    codegen_add_value(id_entry->symbol_type,
+                      has_minus,
+                      ctx->last_entry.lexeme.buffer,
+                      ctx->last_entry.lexeme.size);
 
     MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
     return 0;
