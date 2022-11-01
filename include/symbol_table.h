@@ -61,6 +61,7 @@ struct symbol
     enum token token;
     enum symbol_class symbol_class;
     enum symbol_type symbol_type;
+    uint64_t address;
     struct symbol *next;
 };
 

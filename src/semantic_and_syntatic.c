@@ -557,10 +557,15 @@ syntatic_decl_var(struct syntatic_ctx *ctx, enum token type_tok)
 
     semantic_apply_sr1(id_entry, type_tok);
 
+    uint8_t has_assignment = 0;
+    uint8_t has_minus = 0;
+
     if (ctx->entry->token == TOKEN_ASSIGNMENT) {
+        has_assignment = 1;
         MATCH_OR_ERROR(ctx, TOKEN_ASSIGNMENT);
 
         if (ctx->entry->token == TOKEN_MINUS) {
+            has_minus = 1;
             HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr2(id_entry, 1));
             MATCH_OR_ERROR(ctx, TOKEN_MINUS);
         }
@@ -571,11 +576,20 @@ syntatic_decl_var(struct syntatic_ctx *ctx, enum token type_tok)
             ctx, semantic_apply_sr3(id_entry, ctx->last_entry.constant_type));
     }
 
+    // C.G. 2
+    if (has_assignment)
+        id_entry->address = codegen_add_value(id_entry->symbol_type, has_minus, ctx->last_entry.lexeme.buffer, ctx->last_entry.lexeme.size);
+    else
+        id_entry->address = codegen_add_unnit_value(id_entry->symbol_type);
+
     if (ctx->entry->token == TOKEN_SEMICOLON) {
         MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
         return 0;
     } else if (ctx->entry->token == TOKEN_COMMA) {
         while (ctx->entry->token == TOKEN_COMMA) {
+            has_assignment = 0;
+            has_minus = 0;
+
             MATCH_OR_ERROR(ctx, TOKEN_COMMA);
 
             MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
@@ -590,9 +604,11 @@ syntatic_decl_var(struct syntatic_ctx *ctx, enum token type_tok)
 
             // Handle possible assignment for variable.
             if (ctx->entry->token == TOKEN_ASSIGNMENT) {
+                has_assignment = 1;
                 MATCH_OR_ERROR(ctx, TOKEN_ASSIGNMENT);
 
                 if (ctx->entry->token == TOKEN_MINUS) {
+                    has_minus = 1;
                     HANDLE_SEMANTIC_RESULT(ctx,
                                            semantic_apply_sr2(id_entry, 1));
                     MATCH_OR_ERROR(ctx, TOKEN_MINUS);
@@ -605,6 +621,12 @@ syntatic_decl_var(struct syntatic_ctx *ctx, enum token type_tok)
                     semantic_apply_sr3(id_entry,
                                        ctx->last_entry.constant_type));
             }
+
+            // C.G. 2
+            if (has_assignment)
+                id_entry->address = codegen_add_value(id_entry->symbol_type, has_minus, ctx->last_entry.lexeme.buffer, ctx->last_entry.lexeme.size);
+            else
+                id_entry->address = codegen_add_unnit_value(id_entry->symbol_type);
         }
 
         MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
@@ -639,7 +661,7 @@ syntatic_decl_const(struct syntatic_ctx *ctx)
     semantic_apply_sr5(id_entry, ctx->last_entry.constant_type);
     HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr2(id_entry, has_minus));
 
-    codegen_add_unnit_value(id_entry->symbol_type);
+    // C.G. 1
     codegen_add_value(id_entry->symbol_type,
                       has_minus,
                       ctx->last_entry.lexeme.buffer,
