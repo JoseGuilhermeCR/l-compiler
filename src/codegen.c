@@ -22,6 +22,7 @@ static FILE *file;
 
 static uint64_t current_data_address;
 static uint64_t current_bss_address;
+static uint64_t current_rodata_address;
 
 static uint64_t
 get_next_address(uint64_t *address, uint64_t size)
@@ -60,14 +61,16 @@ dump_template(void)
 
     fprintf(file,
             "; Generated on %04u/%02u/%02u - %02u:%02u\n"
-            "global _start\n"
-            "section .bss\n"
+            "\tglobal _start\n"
+            "\n\tsection .bss\n"
             "TMP:\n"
             "\tresb 0x10000\n"
             "UNNIT_MEM:\n"
-            "section .data\n"
+            "\n\tsection .data\n"
             "INIT_MEM:\n"
-            "section .text\n"
+            "\n\tsection .rodata\n"
+            "CONST_MEM:\n"
+            "\n\tsection .text\n"
             "_start:\n",
             tm.tm_year + 1900,
             tm.tm_mon,
@@ -80,7 +83,7 @@ static void
 add_exit_syscall(uint8_t error_code)
 {
     fprintf(file,
-            "section .text\n"
+            "\n\tsection .text\n"
             "\tmov rax, 60\n"
             "\tmov rsi, %u\n"
             "\tsyscall\n",
@@ -131,39 +134,53 @@ codegen_write_text(const char *fmt, ...)
     va_end(args);
 }
 
-uint64_t
-codegen_add_unnit_value(enum symbol_type type)
+void
+codegen_add_unnit_value(struct symbol *id_entry)
 {
     uint64_t size;
-    if (type != SYMBOL_TYPE_STRING)
-        size = size_from_type_or_lexeme(type, 0);
+    if (id_entry->symbol_type != SYMBOL_TYPE_STRING)
+        size = size_from_type_or_lexeme(id_entry->symbol_type, 0);
     else
         size = 256;
 
     const uint64_t address = get_next_address(&current_bss_address, size);
-    fputs("section .bss\n", file);
+    fputs("\n\tsection .bss\n", file);
     fprintf(file, "\tresb %lu\t; @ 0x%lx\n", size, address);
 
-    return address;
+    id_entry->address = address;
 }
 
-uint64_t
-codegen_add_value(enum symbol_type type,
+void
+codegen_add_value(struct symbol *id_entry,
                   uint8_t has_minus,
                   const char *lexeme,
                   uint32_t lexeme_size)
 {
-    if (type != SYMBOL_TYPE_FLOATING_POINT && type != SYMBOL_TYPE_INTEGER &&
-        has_minus) {
+    if (id_entry->symbol_type != SYMBOL_TYPE_FLOATING_POINT &&
+        id_entry->symbol_type != SYMBOL_TYPE_INTEGER && has_minus) {
         UNREACHABLE();
     }
 
-    const uint64_t address =
-        get_next_address(&current_data_address, size_from_type_or_lexeme(type, lexeme_size));
+    const uint64_t size =
+        size_from_type_or_lexeme(id_entry->symbol_type, lexeme_size);
 
-    fputs("section .data\n", file);
+    uint64_t *addr_counter;
+    const char *section_name;
+    if (id_entry->symbol_class == SYMBOL_CLASS_VAR) {
+        addr_counter = &current_data_address;
+        section_name = ".data";
+    } else if (id_entry->symbol_class == SYMBOL_CLASS_CONST) {
+        addr_counter = &current_rodata_address;
+        section_name = ".rodata";
+    } else {
+        UNREACHABLE();
+    }
 
-    switch (type) {
+    const uint64_t address = get_next_address(addr_counter, size);
+
+    fprintf(file, "\n\tsection %s\n", section_name);
+
+    switch (id_entry->symbol_type) {
         case SYMBOL_TYPE_LOGIC:
         case SYMBOL_TYPE_CHAR:
         case SYMBOL_TYPE_STRING:
@@ -180,7 +197,7 @@ codegen_add_value(enum symbol_type type,
     if (has_minus)
         fputc('-', file);
 
-    switch (type) {
+    switch (id_entry->symbol_type) {
         case SYMBOL_TYPE_LOGIC:
             if (is_case_insensitive_equal("true", lexeme))
                 fputc('1', file);
@@ -200,5 +217,6 @@ codegen_add_value(enum symbol_type type,
     }
 
     fprintf(file, "\t; @ 0x%lx\n", address);
-    return address;
+
+    id_entry->address = address;
 }

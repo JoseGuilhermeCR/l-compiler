@@ -578,9 +578,12 @@ syntatic_decl_var(struct syntatic_ctx *ctx, enum token type_tok)
 
     // C.G. 2
     if (has_assignment)
-        id_entry->address = codegen_add_value(id_entry->symbol_type, has_minus, ctx->last_entry.lexeme.buffer, ctx->last_entry.lexeme.size);
+        codegen_add_value(id_entry,
+                          has_minus,
+                          ctx->last_entry.lexeme.buffer,
+                          ctx->last_entry.lexeme.size);
     else
-        id_entry->address = codegen_add_unnit_value(id_entry->symbol_type);
+        codegen_add_unnit_value(id_entry);
 
     if (ctx->entry->token == TOKEN_SEMICOLON) {
         MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
@@ -624,9 +627,12 @@ syntatic_decl_var(struct syntatic_ctx *ctx, enum token type_tok)
 
             // C.G. 2
             if (has_assignment)
-                id_entry->address = codegen_add_value(id_entry->symbol_type, has_minus, ctx->last_entry.lexeme.buffer, ctx->last_entry.lexeme.size);
+                codegen_add_value(id_entry,
+                                  has_minus,
+                                  ctx->last_entry.lexeme.buffer,
+                                  ctx->last_entry.lexeme.size);
             else
-                id_entry->address = codegen_add_unnit_value(id_entry->symbol_type);
+                codegen_add_unnit_value(id_entry);
         }
 
         MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
@@ -662,7 +668,7 @@ syntatic_decl_const(struct syntatic_ctx *ctx)
     HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr2(id_entry, has_minus));
 
     // C.G. 1
-    codegen_add_value(id_entry->symbol_type,
+    codegen_add_value(id_entry,
                       has_minus,
                       ctx->last_entry.lexeme.buffer,
                       ctx->last_entry.lexeme.size);

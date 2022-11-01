@@ -17,11 +17,11 @@ codegen_destroy(void);
 void
 codegen_write_text(const char *fmt, ...);
 
-uint64_t
-codegen_add_unnit_value(enum symbol_type type);
+void
+codegen_add_unnit_value(struct symbol *id_entry);
 
-uint64_t
-codegen_add_value(enum symbol_type type,
+void
+codegen_add_value(struct symbol *id_entry,
                   uint8_t has_minus,
                   const char *lexeme,
                   uint32_t lexeme_size);
