@@ -61,8 +61,10 @@ dump_template(void)
     fprintf(file,
             "; Generated on %04u/%02u/%02u - %02u:%02u\n"
             "global _start\n"
-            "section .data\n"
+            "section .bss\n"
+            "TMP:\n"
             "\tresb 0x10000\n"
+            "section .data\n"
             "M:\n"
             "section .text\n"
             "_start:\n",
