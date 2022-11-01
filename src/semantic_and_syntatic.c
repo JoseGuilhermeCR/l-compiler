@@ -49,7 +49,7 @@ enum semantic_result
 static void
 semantic_print_error(struct syntatic_ctx *ctx, enum semantic_result sr)
 {
-    fprintf(ERR_STREAM, "%i\nErro: ", ctx->lexer->line);
+    fprintf(ERR_STREAM, "%i\nErro: ", ctx->last_entry.line);
     switch (sr) {
         case SEMANTIC_ERROR_CLASS_MISMATCH:
             fprintf(ERR_STREAM,
@@ -491,14 +491,14 @@ semantic_apply_sr1(struct symbol *symbol, enum token tok)
 static void
 syntatic_report_unexpected_token_error(struct syntatic_ctx *ctx)
 {
-    fprintf(ERR_STREAM, "%i\n", ctx->lexer->line);
+    fprintf(ERR_STREAM, "%i\nErro: ", ctx->entry->line);
     if (ctx->entry->lexeme.size) {
         fprintf(ERR_STREAM,
-                "token nao esperado [%s].\n",
+                "Token não esperado [%s].\n",
                 ctx->entry->lexeme.buffer);
     } else {
         fprintf(ERR_STREAM,
-                "token nao esperado [%s].\n",
+                "Token não esperado [%s].\n",
                 get_lexeme_from_token(ctx->entry->token));
     }
 }
@@ -506,8 +506,8 @@ syntatic_report_unexpected_token_error(struct syntatic_ctx *ctx)
 static void
 syntatic_report_unexpected_eof_error(struct syntatic_ctx *ctx)
 {
-    fprintf(ERR_STREAM, "%i\n", ctx->lexer->line);
-    fputs("fim de arquivo nao esperado.\n", ERR_STREAM);
+    fprintf(ERR_STREAM, "%i\n", ctx->entry->line);
+    fputs("Erro: Fim de arquivo não esperado.\n", ERR_STREAM);
 }
 
 static enum syntatic_result

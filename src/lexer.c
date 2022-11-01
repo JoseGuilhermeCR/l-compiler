@@ -73,13 +73,16 @@ lexer_get_next_token(struct lexer *lexer, struct lexical_entry *entry)
         return LEXER_RESULT_EMPTY;
 
     memset(entry, 0, sizeof(*entry));
+    entry->line = 1;
 
     lexer->state = LEXER_STATE_INITIAL;
     while (lexer->cursor != lexer->file->size) {
         const char c = lexer->file->buffer[lexer->cursor++];
 
-        if (c == '\n')
+        if (c == '\n') {
+            entry->line = lexer->line;
             ++lexer->line;
+        }
 
         if (!is_in_alphabet(c)) {
             lexer->error = LEXER_ERROR_INVALID_CHARACTER;
@@ -414,18 +417,18 @@ lexer_print_error(const struct lexer *lexer)
 {
     assert(lexer->error != LEXER_ERROR_NONE);
 
-    fprintf(ERR_STREAM, "%i\n", lexer->line);
+    fprintf(ERR_STREAM, "%i\nErro: ", lexer->line);
     switch (lexer->error) {
         case LEXER_ERROR_UNEXPECTED_EOF:
-            fputs("fim de arquivo nao esperado.\n", ERR_STREAM);
+            fputs("Fim de arquivo não esperado.\n", ERR_STREAM);
             break;
         case LEXER_ERROR_INVALID_LEXEME:
             fprintf(ERR_STREAM,
-                    "lexema nao identificado [%s].\n",
+                    "Lexema não identificado [%s].\n",
                     lexer->lexeme.buffer);
             break;
         case LEXER_ERROR_INVALID_CHARACTER:
-            fputs("caractere invalido.\n", ERR_STREAM);
+            fputs("Caractere inválido.\n", ERR_STREAM);
             break;
         default:
             UNREACHABLE();

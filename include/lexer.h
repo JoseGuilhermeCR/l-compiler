@@ -101,10 +101,11 @@ struct lexer
 
 struct lexical_entry
 {
+    uint32_t line;
     enum token token;
     struct lexeme lexeme;
+    /* Used only when token = TOKEN_CONSTANT. */
     enum constant_type constant_type;
-
     /* Used only when token = TOKEN_IDENTIFIER. */
     struct symbol *symbol_table_entry;
     uint8_t is_new_identifier;
