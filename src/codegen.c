@@ -18,16 +18,6 @@
  * Separate constant data into .ro_data.
  * */
 
-struct codegen_constant
-{
-    enum symbol_type type;
-    uint8_t has_minus;
-    uint64_t address;
-    char value[MAX_VALUE_SIZE];
-    struct codegen_constant *next;
-};
-
-static struct codegen_constant *constants;
 static FILE *file;
 
 static uint64_t
@@ -60,25 +50,6 @@ size_from_type_or_lexeme(enum symbol_type type, uint32_t lexeme_size)
     }
 }
 
-static uint64_t
-codegen_constant_init(struct codegen_constant *c,
-                      enum symbol_type type,
-                      uint8_t has_minus,
-                      const char *lexeme,
-                      uint32_t lexeme_size)
-{
-    assert(lexeme_size <= MAX_VALUE_SIZE);
-
-    memset(c, 0, sizeof(*c));
-
-    c->type = type;
-    c->has_minus = has_minus;
-    strncpy(c->value, lexeme, MAX_VALUE_SIZE);
-
-    c->address = get_next_address(size_from_type_or_lexeme(type, lexeme_size));
-    return c->address;
-}
-
 static void
 dump_template(void)
 {
@@ -90,9 +61,9 @@ dump_template(void)
     fprintf(file,
             "; Generated on %04u/%02u/%02u - %02u:%02u\n"
             "global _start\n"
-            "section .bss\n"
-            "TMPMEM:\n"
+            "section .data\n"
             "\tresb 0x10000\n"
+            "M:\n"
             "section .text\n"
             "_start:\n",
             tm.tm_year + 1900,
@@ -111,58 +82,6 @@ add_exit_syscall(uint8_t error_code)
             "\tmov rsi, %u\n"
             "\tsyscall\n",
             error_code);
-}
-
-static void
-dump_constants(void)
-{
-    if (!constants)
-        return;
-
-    fputs("section .data\n", file);
-    fputs("DATA:\n", file);
-
-    const struct codegen_constant *c = constants;
-    while (c) {
-        switch (c->type) {
-            case SYMBOL_TYPE_LOGIC:
-            case SYMBOL_TYPE_CHAR:
-            case SYMBOL_TYPE_STRING:
-                fputs("\tdb ", file);
-                break;
-            case SYMBOL_TYPE_FLOATING_POINT:
-            case SYMBOL_TYPE_INTEGER:
-                fputs("\tdd ", file);
-                break;
-            default:
-                UNREACHABLE();
-        }
-
-        if (c->has_minus)
-            fputc('-', file);
-
-        switch (c->type) {
-            case SYMBOL_TYPE_LOGIC:
-                if (is_case_insensitive_equal("true", c->value))
-                    fputc('1', file);
-                else
-                    fputc('0', file);
-                break;
-            case SYMBOL_TYPE_STRING:
-                fprintf(file, "%s,0", c->value);
-                break;
-            case SYMBOL_TYPE_CHAR:
-            case SYMBOL_TYPE_FLOATING_POINT:
-            case SYMBOL_TYPE_INTEGER:
-                fputs(c->value, file);
-                break;
-            default:
-                UNREACHABLE();
-        }
-
-        fprintf(file, "\t; @ 0x%lx\n", c->address);
-        c = c->next;
-    }
 }
 
 int
@@ -184,7 +103,6 @@ codegen_dump(void)
         return;
 
     add_exit_syscall(0);
-    dump_constants();
     fflush(file);
 }
 
@@ -217,26 +135,51 @@ codegen_add_constant(enum symbol_type type,
                      uint32_t lexeme_size)
 {
     if (type != SYMBOL_TYPE_FLOATING_POINT && type != SYMBOL_TYPE_INTEGER &&
-        has_minus)
+        has_minus) {
         UNREACHABLE();
-
-    if (!constants) {
-        constants = malloc(sizeof(*constants));
-        assert(constants && "failed to allocate memory for codegen_constant.");
-        return codegen_constant_init(
-            constants, type, has_minus, lexeme, lexeme_size);
     }
 
-    struct codegen_constant *previous = constants;
-    struct codegen_constant *next = constants->next;
-    while (next) {
-        previous = next;
-        next = next->next;
+    const uint64_t address =
+        get_next_address(size_from_type_or_lexeme(type, lexeme_size));
+
+    fputs("section .data\n", file);
+
+    switch (type) {
+        case SYMBOL_TYPE_LOGIC:
+        case SYMBOL_TYPE_CHAR:
+        case SYMBOL_TYPE_STRING:
+            fputs("\tdb ", file);
+            break;
+        case SYMBOL_TYPE_FLOATING_POINT:
+        case SYMBOL_TYPE_INTEGER:
+            fputs("\tdd ", file);
+            break;
+        default:
+            UNREACHABLE();
     }
 
-    next = malloc(sizeof(*next));
-    assert(next && "failed to allocate memory for codegen_constant.");
+    if (has_minus)
+        fputc('-', file);
 
-    previous->next = next;
-    return codegen_constant_init(next, type, has_minus, lexeme, lexeme_size);
+    switch (type) {
+        case SYMBOL_TYPE_LOGIC:
+            if (is_case_insensitive_equal("true", lexeme))
+                fputc('1', file);
+            else
+                fputc('0', file);
+            break;
+        case SYMBOL_TYPE_STRING:
+            fprintf(file, "%s,0", lexeme);
+            break;
+        case SYMBOL_TYPE_CHAR:
+        case SYMBOL_TYPE_FLOATING_POINT:
+        case SYMBOL_TYPE_INTEGER:
+            fputs(lexeme, file);
+            break;
+        default:
+            UNREACHABLE();
+    }
+
+    fprintf(file, "\t; @ 0x%lx\n", address);
+    return address;
 }
