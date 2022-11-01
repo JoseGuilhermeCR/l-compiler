@@ -138,14 +138,14 @@ main(int argc, const char *argv[])
         codegen_dump();
         codegen_destroy();
 
-        if (assemble(out_file) == 0) {
-            usleep(500 * 1000);
-            if (link_object("l.o") < 0) {
-                fputs("linking failed.\n", ERR_STREAM);
-            }
-        } else {
-            fputs("assemble failed.\n", ERR_STREAM);
-        }
+      //  if (assemble(out_file) == 0) {
+      //      usleep(500 * 1000);
+      //      if (link_object("l.o") < 0) {
+      //          fputs("linking failed.\n", ERR_STREAM);
+      //      }
+      //  } else {
+      //      fputs("assemble failed.\n", ERR_STREAM);
+      //  }
     }
 
     codegen_destroy();
