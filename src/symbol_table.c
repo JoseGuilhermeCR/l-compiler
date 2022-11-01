@@ -107,6 +107,7 @@ symbol_print(struct symbol *s, FILE *file)
     fprintf(file, "@: %p\t", s);
     fprintf(file, "Section: %s\t", symbol_section_to_str(s->symbol_section));
     fprintf(file, "Address: 0x%lx\t", s->address);
+    fprintf(file, "Size: %03lu\t", s->size);
     fprintf(file, "Class: %s\t", symbol_class_to_str(s->symbol_class));
     fprintf(file, "Type: %s\t", symbol_type_to_str(s->symbol_type));
     fprintf(file, "Lexeme: %s\n", s->lexeme);

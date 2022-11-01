@@ -143,6 +143,8 @@ codegen_add_unnit_value(struct symbol *id_entry)
     else
         size = 256;
 
+    id_entry->size = size;
+
     const uint64_t address = get_next_address(&current_bss_address, size);
     fputs("\n\tsection .bss\n", file);
     fprintf(file, "\tresb %lu\t; @ 0x%lx\n", size, address);
@@ -164,6 +166,7 @@ codegen_add_value(struct symbol *id_entry,
 
     const uint64_t size =
         size_from_type_or_lexeme(id_entry->symbol_type, lexeme_size);
+    id_entry->size = size;
 
     uint64_t *addr_counter;
     const char *section_name;

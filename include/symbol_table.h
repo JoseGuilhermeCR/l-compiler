@@ -71,6 +71,7 @@ struct symbol
     enum symbol_type symbol_type;
     enum symbol_section symbol_section;
     uint64_t address;
+    uint64_t size;
     struct symbol *next;
 };
 
