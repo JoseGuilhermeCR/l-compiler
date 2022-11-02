@@ -9,6 +9,7 @@ struct codegen_value_info
 {
     uint64_t address;
     uint64_t size;
+    enum symbol_type type;
     enum symbol_section section;
 };
 
@@ -40,5 +41,8 @@ codegen_add_tmp(enum symbol_type type,
                 const char *lexeme,
                 uint32_t lexeme_size,
                 struct codegen_value_info *info);
+
+void
+codegen_negate_f(struct codegen_value_info *f);
 
 #endif

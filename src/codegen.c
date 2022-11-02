@@ -258,3 +258,24 @@ codegen_add_tmp(enum symbol_type type,
 
     fprintf(file, "\tmov [TMP + %lu], rax\n", info->address);
 }
+
+void
+codegen_negate_f(struct codegen_value_info *f)
+{
+    const uint64_t original_address = f->address;
+
+    // Generate a new temporary address.
+    f->address = get_next_address(&current_bss_tmp_address, f->size);
+
+    fputs("\n\tsection .text\n", file);
+
+    // Move value from f1 to rax.
+    fprintf(file, "\tmov rax, [TMP + %lu]\n", original_address);
+
+    // Negate it. (Remember the instructions we use are limited.)
+    fputs("\tneg rax\n", file);
+    fputs("\tadd rax, 1\n", file);
+
+    // Move value from rax to f.
+    fprintf(file, "\tmov [TMP + %lu], rax\n", f->address);
+}
