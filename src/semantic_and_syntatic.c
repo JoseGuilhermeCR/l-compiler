@@ -167,33 +167,41 @@ semantic_apply_sr25(enum token operation_tok,
 
 static enum semantic_result
 semantic_apply_sr24(enum token operation_tok,
-                    enum symbol_type *t_type,
-                    enum symbol_type f_type)
+                    struct codegen_value_info *t_info,
+                    struct codegen_value_info *f_info)
 {
     const uint8_t is_arithmetic =
-        is_st_arithmetic(*t_type) && is_st_arithmetic(f_type);
+        is_st_arithmetic(t_info->type) && is_st_arithmetic(f_info->type);
 
     switch (operation_tok) {
         case TOKEN_TIMES:
+        case TOKEN_DIVISION:
             if (is_arithmetic) {
-                // If one of the operands is not a float, implicitly convert it.
-                if (f_type == SYMBOL_TYPE_FLOATING_POINT) {
-                    *t_type = SYMBOL_TYPE_FLOATING_POINT;
+                // If any of the operands is a floating point.
+                if (t_info->type == SYMBOL_TYPE_FLOATING_POINT ||
+                    f_info->type == SYMBOL_TYPE_FLOATING_POINT) {
+                    // Make sure we convert the other one to floating point as
+                    // well.
+                    if (f_info->type != SYMBOL_TYPE_FLOATING_POINT)
+                        codegen_convert_to_floating_point(t_info);
+                    else
+                        codegen_convert_to_floating_point(f_info);
                 }
             } else {
                 return SEMANTIC_ERROR_TYPE_MISMATCH;
             }
             break;
         case TOKEN_LOGICAL_AND:
-            if (*t_type != SYMBOL_TYPE_LOGIC || f_type != SYMBOL_TYPE_LOGIC) {
+            if (t_info->type != SYMBOL_TYPE_LOGIC ||
+                f_info->type != SYMBOL_TYPE_LOGIC) {
                 return SEMANTIC_ERROR_TYPE_MISMATCH;
             }
             break;
         case TOKEN_MOD:
             if (is_arithmetic) {
                 // "mod" can only be used between integers.
-                if (*t_type != SYMBOL_TYPE_INTEGER ||
-                    f_type != SYMBOL_TYPE_INTEGER) {
+                if (t_info->type != SYMBOL_TYPE_INTEGER ||
+                    f_info->type != SYMBOL_TYPE_INTEGER) {
                     return SEMANTIC_ERROR_TYPE_MISMATCH;
                 }
             } else {
@@ -204,19 +212,9 @@ semantic_apply_sr24(enum token operation_tok,
             if (is_arithmetic) {
                 // "div" is used for integer division... if any of the operands
                 // is a floating point... we have a type error.
-                if (*t_type != SYMBOL_TYPE_INTEGER ||
-                    f_type != SYMBOL_TYPE_INTEGER) {
+                if (t_info->type != SYMBOL_TYPE_INTEGER ||
+                    f_info->type != SYMBOL_TYPE_INTEGER) {
                     return SEMANTIC_ERROR_TYPE_MISMATCH;
-                }
-            } else {
-                return SEMANTIC_ERROR_TYPE_MISMATCH;
-            }
-            break;
-        case TOKEN_DIVISION:
-            if (is_arithmetic) {
-                // If one of the operands is not a float, implicitly convert it.
-                if (f_type == SYMBOL_TYPE_FLOATING_POINT) {
-                    *t_type = SYMBOL_TYPE_FLOATING_POINT;
                 }
             } else {
                 return SEMANTIC_ERROR_TYPE_MISMATCH;
@@ -869,8 +867,7 @@ syntatic_t(struct syntatic_ctx *ctx, struct codegen_value_info *t_info)
         if (syntatic_f(ctx, &f_info) < 0)
             return -1;
 
-        HANDLE_SEMANTIC_RESULT(
-            ctx, semantic_apply_sr24(tok, &t_info->type, f_info.type));
+        HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr24(tok, t_info, &f_info));
 
         tok = ctx->entry->token;
     }
