@@ -28,7 +28,11 @@ static uint64_t current_rodata_address;
 static uint64_t
 get_next_address(uint64_t *address, uint64_t size)
 {
-    const uint64_t tmp = *address;
+    const uint64_t mod = *address % size;
+    uint64_t not_aligned_by = 0;
+    if (mod)
+        not_aligned_by = size - mod;
+    const uint64_t tmp = *address + not_aligned_by;
     *address += size;
     return tmp;
 }
@@ -145,6 +149,7 @@ codegen_add_unnit_value(enum symbol_type type, struct codegen_value_info *info)
 
     info->address = get_next_address(&current_bss_address, info->size);
     fputs("\n\tsection .bss\n", file);
+    fprintf(file, "\n\talignb %lu\n", info->size);
     fprintf(file, "\tresb %lu\t; @ 0x%lx\n", info->size, info->address);
 
     info->section = SYMBOL_SECTION_BSS;
@@ -182,6 +187,7 @@ codegen_add_value(enum symbol_type type,
     info->address = get_next_address(addr_counter, info->size);
 
     fprintf(file, "\n\tsection %s\n", section_name);
+    fprintf(file, "\n\talign %lu\n", info->size);
 
     switch (type) {
         case SYMBOL_TYPE_LOGIC:
