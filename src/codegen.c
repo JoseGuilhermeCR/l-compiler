@@ -220,6 +220,19 @@ codegen_add_value(enum symbol_type type,
     }
 
     fprintf(file, "\t; @ 0x%lx\n", info->address);
+
+    if (type == SYMBOL_TYPE_STRING) {
+        // Reserve enough space for the unnitialized portion of the string.
+        // At this point, we've only reserved space for the portion that we
+        // explicitly initialized with "db".
+
+        // strlen(lexeme)
+        // -2 because of ""
+        // +1 because of \0
+        const uint64_t already_reserved_size = strlen(lexeme) - 1;
+        const uint64_t to_reserve = info->size - already_reserved_size;
+        fprintf(file, "\ttimes %lu db 0\n", to_reserve);
+    }
 }
 
 void
