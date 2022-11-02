@@ -1024,6 +1024,8 @@ syntatic_write(struct syntatic_ctx *ctx)
 static int
 syntatic_attr(struct syntatic_ctx *ctx)
 {
+    codegen_reset_tmp();
+
     struct codegen_value_info exp_info;
     memset(&exp_info, 0, sizeof(exp_info));
 
@@ -1052,6 +1054,10 @@ syntatic_attr(struct syntatic_ctx *ctx)
         return -1;
     HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr9(id_entry, exp_info.type));
     MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
+
+    // TODO(Jose): Handle brackets assignment.
+    codegen_move_to_id_entry(id_entry, &exp_info);
+
     return 0;
 }
 

@@ -4,7 +4,6 @@
 #include "utils.h"
 
 #include <assert.h>
-#include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -136,15 +135,9 @@ codegen_destroy(void)
 }
 
 void
-codegen_write_text(const char *fmt, ...)
+codegen_reset_tmp(void)
 {
-    if (!file)
-        return;
-
-    va_list args;
-    va_start(args, fmt);
-    vfprintf(file, fmt, args);
-    va_end(args);
+    current_bss_tmp_address = 0;
 }
 
 void
@@ -847,4 +840,80 @@ codegen_perform_comparison(enum token operation_tok,
 
     exp_info->address = new_address;
     change_value_to_bool(exp_info);
+}
+
+void
+codegen_move_to_id_entry(struct symbol *id_entry,
+                         const struct codegen_value_info *exp)
+{
+    assert(id_entry->symbol_type == exp->type);
+
+    const char *id_label = label_from_section(id_entry->symbol_section);
+    const char *exp_label = label_from_section(exp->section);
+
+    fputs("\n\tsection .text ; codegen_move_to_id_entry.\n", file);
+
+    switch (id_entry->symbol_type) {
+        case SYMBOL_TYPE_FLOATING_POINT:
+            fprintf(file,
+                    "\tmovss xmm0, [%s + %lu]\n"
+                    "\tmovss [%s + %lu], xmm0\n",
+                    exp_label,
+                    exp->address,
+                    id_label,
+                    id_entry->address);
+            break;
+        case SYMBOL_TYPE_INTEGER:
+            fprintf(file,
+                    "\tmov eax, [%s + %lu]\n"
+                    "\tmov [%s + %lu], eax\n",
+                    exp_label,
+                    exp->address,
+                    id_label,
+                    id_entry->address);
+            break;
+        case SYMBOL_TYPE_LOGIC:
+        case SYMBOL_TYPE_CHAR:
+            fprintf(file,
+                    "\tmov al, [%s + %lu]\n"
+                    "\tmov [%s + %lu], al\n",
+                    exp_label,
+                    exp->address,
+                    id_label,
+                    id_entry->address);
+            break;
+        case SYMBOL_TYPE_STRING: {
+            char loop_beg_label[16];
+            get_next_label(loop_beg_label, sizeof(loop_beg_label));
+
+            char loop_end_label[16];
+            get_next_label(loop_end_label, sizeof(loop_end_label));
+
+            fprintf(file,
+                    "\tmov rsi, %s\n"
+                    "\tadd rsi, %lu\n"
+                    "\tmov rdi, %s\n"
+                    "\tadd rdi, %lu\n"
+                    "%s:\n"
+                    "\tmov al, [rdi]\n"
+                    "\tmov [rsi], al\n"
+                    "\tcmp al, 0\n"
+                    "\tje %s\n"
+                    "\tadd rdi, 1\n"
+                    "\tadd rsi, 1\n"
+                    "\tjmp %s\n"
+                    "%s:",
+                    id_label,
+                    id_entry->address,
+                    exp_label,
+                    exp->address,
+                    loop_beg_label,
+                    loop_end_label,
+                    loop_beg_label,
+                    loop_end_label);
+            break;
+        }
+        default:
+            UNREACHABLE();
+    }
 }

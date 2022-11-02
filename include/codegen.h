@@ -23,7 +23,7 @@ void
 codegen_destroy(void);
 
 void
-codegen_write_text(const char *fmt, ...);
+codegen_reset_tmp(void);
 
 void
 codegen_add_unnit_value(enum symbol_type type, struct codegen_value_info *info);
@@ -85,4 +85,9 @@ void
 codegen_perform_comparison(enum token operation_tok,
                            struct codegen_value_info *exp_info,
                            const struct codegen_value_info *exps_info);
+
+void
+codegen_move_to_id_entry(struct symbol *id_entry,
+                         const struct codegen_value_info *exp);
+
 #endif
