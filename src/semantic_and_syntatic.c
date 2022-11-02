@@ -242,15 +242,16 @@ semantic_apply_sr22(enum symbol_type *exps_type, enum symbol_type t_type)
 }
 
 static enum semantic_result
-semantic_apply_sr21(enum symbol_type t_type, uint8_t had_signal)
+semantic_apply_sr21(struct codegen_value_info *t_info, uint8_t had_signal)
 {
     if (!had_signal)
         return SEMANTIC_OK;
 
-    if (t_type != SYMBOL_TYPE_INTEGER && t_type != SYMBOL_TYPE_FLOATING_POINT)
+    if (t_info->type != SYMBOL_TYPE_INTEGER && t_info->type != SYMBOL_TYPE_FLOATING_POINT) {
         return SEMANTIC_ERROR_TYPE_MISMATCH;
+    }
 
-    //codegen_negate;
+    codegen_negate(t_info);
     return SEMANTIC_OK;
 }
 
@@ -893,7 +894,7 @@ syntatic_exps(struct syntatic_ctx *ctx, struct codegen_value_info *exps_info)
     if (syntatic_t(ctx, &t_info) < 0)
         return -1;
 
-    HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr21(t_info.type, had_signal));
+    HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr21(&t_info, had_signal));
 
     semantic_apply_sr22(&exps_info->type, t_info.type);
 

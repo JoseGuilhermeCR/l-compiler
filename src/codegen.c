@@ -402,3 +402,34 @@ codegen_perform_logical_or(struct codegen_value_info *exps_info,
 {
     assert(exps_info->type == t_info->type);
 }
+
+void codegen_negate(struct codegen_value_info *t_info)
+{
+    const uint64_t original_address = t_info->address;
+    const char *label = label_from_section(t_info->section);
+
+    t_info->section = SYMBOL_SECTION_NONE;
+    t_info->address = get_next_address(&current_bss_tmp_address, t_info->size);
+
+    fputs("\n\tsection .text ; codegen_negate.\n", file);
+
+    if (t_info->type == SYMBOL_TYPE_FLOATING_POINT) {
+        fprintf(file,
+                "\tmov rax, 0\n"
+                "\tcvtsi2ss xmm0, rax\n"
+                "\tmovss xmm1, [%s + %lu]\n"
+                "\tsubss xmm0, xmm1\n"
+                "\tmovss [TMP + %lu], xmm0\n",
+                label, original_address, t_info->address
+               );
+    } else if (t_info->type == SYMBOL_TYPE_INTEGER) {
+        fprintf(file,
+                "\tmov eax, [%s + %lu]\n"
+                "\tneg eax\n"
+                "\tmov [TMP + %lu], eax\n",
+                label, original_address, t_info->address
+               );
+    } else {
+        UNREACHABLE();
+    }
+}
