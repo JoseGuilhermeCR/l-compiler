@@ -26,10 +26,10 @@ static uint64_t current_bss_address;
 static uint64_t current_rodata_address;
 static uint64_t current_label_counter;
 
-static uint64_t
-get_next_label_number(void)
+static void
+get_next_label(char *buffer, uint32_t size)
 {
-    return current_label_counter++;
+    snprintf(buffer, size, "L%lu", current_label_counter++);
 }
 
 static uint64_t
@@ -424,11 +424,8 @@ codegen_perform_logical_or(struct codegen_value_info *exps_info,
     exps_info->address =
         get_next_address(&current_bss_tmp_address, exps_info->size);
 
-    char je_label_buffer[32];
-    snprintf(je_label_buffer,
-             sizeof(je_label_buffer),
-             "L%lu",
-             get_next_label_number());
+    char je_label_buffer[16];
+    get_next_label(je_label_buffer, sizeof(je_label_buffer));
 
     fprintf(file,
             "\n\tsection .text ; codegen_perform_logical_or.\n"
