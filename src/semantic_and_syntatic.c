@@ -877,6 +877,8 @@ syntatic_t(struct syntatic_ctx *ctx, struct codegen_value_info *t_info)
                 codegen_perform_division(t_info, &f_info);
                 break;
             case TOKEN_LOGICAL_AND:
+                codegen_perform_and(t_info, &f_info);
+                break;
             case TOKEN_MOD:
                 codegen_perform_mod(t_info, &f_info);
                 break;

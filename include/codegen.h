@@ -77,4 +77,8 @@ void
 codegen_perform_mod(struct codegen_value_info *t_info,
                     const struct codegen_value_info *f_info);
 
+void
+codegen_perform_and(struct codegen_value_info *t_info,
+                    const struct codegen_value_info *f_info);
+
 #endif

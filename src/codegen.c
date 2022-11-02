@@ -607,3 +607,46 @@ codegen_perform_mod(struct codegen_value_info *t_info,
             "\tmov [TMP + %lu], edx ; codegen_perform_integer_division\n",
             t_info->address);
 }
+
+void
+codegen_perform_and(struct codegen_value_info *t_info,
+                    const struct codegen_value_info *f_info)
+{
+    assert(t_info->type == f_info->type);
+
+    const uint64_t original_address = t_info->address;
+    const char *t_label = label_from_section(t_info->section);
+    const char *f_label = label_from_section(f_info->section);
+
+    t_info->section = SYMBOL_SECTION_NONE;
+    t_info->address = get_next_address(&current_bss_tmp_address, t_info->size);
+
+    char jne_label_buffer[16];
+    get_next_label(jne_label_buffer, sizeof(jne_label_buffer));
+
+    char end_label_buffer[16];
+    get_next_label(end_label_buffer, sizeof(end_label_buffer));
+
+    fprintf(file,
+            "\n\tsection .text ; codegen_perform_logical_and.\n"
+            "\tmov al, [%s + %lu]\n"
+            "\tmov bl, [%s + %lu]\n"
+            "\tadd al, bl\n"
+            "\tcmp al, 2\n"
+            "\tjne %s\n"
+            "\tmov al, 1\n"
+            "\tjmp %s\n"
+            "%s:\n"
+            "\tmov al, 0\n"
+            "%s:\n"
+            "\tmov [TMP + %lu], al\n",
+            t_label,
+            original_address,
+            f_label,
+            f_info->address,
+            jne_label_buffer,
+            end_label_buffer,
+            jne_label_buffer,
+            end_label_buffer,
+            t_info->address);
+}
