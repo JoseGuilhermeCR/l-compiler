@@ -92,36 +92,47 @@ is_st_arithmetic(enum symbol_type type)
 
 static enum semantic_result
 semantic_apply_sr26(enum token operation_tok,
-                    enum symbol_type *exp_type,
-                    enum symbol_type t_type)
+                    struct codegen_value_info *exp_info,
+                    struct codegen_value_info *exps_info)
 {
-    const uint8_t any_string =
-        *exp_type == SYMBOL_TYPE_STRING || t_type == SYMBOL_TYPE_STRING;
-    const uint8_t are_types_equal = *exp_type == t_type;
     const uint8_t is_arithmetic =
-        is_st_arithmetic(*exp_type) && is_st_arithmetic(t_type);
+        is_st_arithmetic(exp_info->type) && is_st_arithmetic(exps_info->type);
+
+    if (is_arithmetic) {
+        // If any of the operands is a floating point.
+        if (exp_info->type == SYMBOL_TYPE_FLOATING_POINT ||
+            exps_info->type == SYMBOL_TYPE_FLOATING_POINT) {
+            // Make sure we convert the other one to floating point as well.
+            if (exp_info->type != SYMBOL_TYPE_FLOATING_POINT)
+                codegen_convert_to_floating_point(exp_info);
+            else if (exps_info->type != SYMBOL_TYPE_FLOATING_POINT)
+                codegen_convert_to_floating_point(exps_info);
+        }
+
+        return SEMANTIC_OK;
+    }
+
+    const uint8_t are_types_equal = exp_info->type == exps_info->type;
+    const uint8_t any_string = exp_info->type == SYMBOL_TYPE_STRING ||
+                               exps_info->type == SYMBOL_TYPE_STRING;
 
     switch (operation_tok) {
         case TOKEN_EQUAL:
         case TOKEN_NOT_EQUAL:
-            if (!is_arithmetic && !are_types_equal)
+            if (!are_types_equal)
                 return SEMANTIC_ERROR_TYPE_MISMATCH;
             break;
         case TOKEN_LESS:
         case TOKEN_LESS_EQUAL:
         case TOKEN_GREATER:
         case TOKEN_GREATER_EQUAL:
-            if (any_string || (!is_arithmetic && !are_types_equal))
+            if (any_string || !are_types_equal)
                 return SEMANTIC_ERROR_TYPE_MISMATCH;
             break;
         default:
             UNREACHABLE();
     }
 
-    // TODO(Jose): Maybe remove this from here,
-    // but the resulting expression will always
-    // be of boolean type.
-    *exp_type = SYMBOL_TYPE_LOGIC;
     return SEMANTIC_OK;
 }
 
@@ -961,25 +972,51 @@ syntatic_exp(struct syntatic_ctx *ctx, struct codegen_value_info *exp_info)
 
     memcpy(exp_info, &exps_info, sizeof(struct codegen_value_info));
 
-    switch (ctx->entry->token) {
+    enum token operation_tok = ctx->entry->token;
+    uint8_t had_comparison = 0;
+    switch (operation_tok) {
         case TOKEN_EQUAL:
         case TOKEN_NOT_EQUAL:
         case TOKEN_LESS:
         case TOKEN_LESS_EQUAL:
         case TOKEN_GREATER:
         case TOKEN_GREATER_EQUAL: {
-            enum token operation_tok = ctx->entry->token;
+            had_comparison = 1;
             MATCH_OR_ERROR(ctx, ctx->entry->token);
             if (syntatic_exps(ctx, &exps_info) < 0)
                 return -1;
-            HANDLE_SEMANTIC_RESULT(ctx,
-                                   semantic_apply_sr26(operation_tok,
-                                                       &exp_info->type,
-                                                       exps_info.type));
+            HANDLE_SEMANTIC_RESULT(
+                ctx, semantic_apply_sr26(operation_tok, exp_info, &exps_info));
             break;
         }
         default:
             break;
+    }
+
+    if (!had_comparison)
+        return 0;
+
+    switch (operation_tok) {
+        case TOKEN_EQUAL:
+            break;
+
+        case TOKEN_NOT_EQUAL:
+            break;
+
+        case TOKEN_LESS:
+            break;
+
+        case TOKEN_LESS_EQUAL:
+            break;
+
+        case TOKEN_GREATER:
+            break;
+
+        case TOKEN_GREATER_EQUAL:
+            break;
+
+        default:
+            UNREACHABLE();
     }
 
     return 0;
