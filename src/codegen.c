@@ -95,9 +95,9 @@ static void
 add_exit_syscall(uint8_t error_code)
 {
     fprintf(file,
-            "\n\tsection .text ; Exit syscall.\n"
+            "\n\tsection .text ; add_exit_syscall.\n"
             "\tmov rax, 60\n"
-            "\tmov rsi, %u\n"
+            "\tmov rdi, %u\n"
             "\tsyscall\n",
             error_code);
 }
