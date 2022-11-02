@@ -298,7 +298,7 @@ label_from_section(enum symbol_section section)
 }
 
 void
-codegen_negate_f(struct codegen_value_info *f)
+codegen_logic_negate(struct codegen_value_info *f)
 {
     assert(f->type == SYMBOL_TYPE_LOGIC);
 
@@ -308,7 +308,7 @@ codegen_negate_f(struct codegen_value_info *f)
     // Generate a new temporary address.
     f->address = get_next_address(&current_bss_tmp_address, f->size);
 
-    fputs("\n\tsection .text ; codegen_negate_f.\n", file);
+    fputs("\n\tsection .text ; codegen_logic_negate.\n", file);
 
     // Move value from f to al.
     fprintf(file, "\tmov al, [%s + %lu]\n", label, original_address);

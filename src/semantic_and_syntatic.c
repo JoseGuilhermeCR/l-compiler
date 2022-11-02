@@ -750,7 +750,7 @@ syntatic_f(struct syntatic_ctx *ctx, struct codegen_value_info *f_info)
             if (syntatic_f(ctx, f_info) < 0)
                 return -1;
             HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr14(f_info->type));
-            codegen_negate_f(f_info);
+            codegen_logic_negate(f_info);
             break;
         case TOKEN_OPENING_PAREN: {
             struct codegen_value_info exp_info;
