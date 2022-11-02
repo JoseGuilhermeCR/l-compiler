@@ -583,7 +583,6 @@ syntatic_decl_var(struct syntatic_ctx *ctx, enum token type_tok)
                           id_entry->symbol_class,
                           has_minus,
                           ctx->last_entry.lexeme.buffer,
-                          ctx->last_entry.lexeme.size,
                           &info);
     } else {
         codegen_add_unnit_value(id_entry->symbol_type, &info);
@@ -639,7 +638,6 @@ syntatic_decl_var(struct syntatic_ctx *ctx, enum token type_tok)
                                   id_entry->symbol_class,
                                   has_minus,
                                   ctx->last_entry.lexeme.buffer,
-                                  ctx->last_entry.lexeme.size,
                                   &info);
             } else {
                 codegen_add_unnit_value(id_entry->symbol_type, &info);
@@ -688,7 +686,6 @@ syntatic_decl_const(struct syntatic_ctx *ctx)
                       id_entry->symbol_class,
                       has_minus,
                       ctx->last_entry.lexeme.buffer,
-                      ctx->last_entry.lexeme.size,
                       &info);
 
     id_entry->size = info.size;
@@ -801,10 +798,7 @@ syntatic_f(struct syntatic_ctx *ctx, struct codegen_value_info *f_info)
             semantic_apply_sr18(&f_info->type, ctx->last_entry.constant_type);
 
             struct codegen_value_info info;
-            codegen_add_tmp(f_info->type,
-                            ctx->last_entry.lexeme.buffer,
-                            ctx->last_entry.lexeme.size,
-                            &info);
+            codegen_add_tmp(f_info->type, ctx->last_entry.lexeme.buffer, &info);
 
             break;
         }

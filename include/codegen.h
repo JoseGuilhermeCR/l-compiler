@@ -33,13 +33,11 @@ codegen_add_value(enum symbol_type type,
                   enum symbol_class class,
                   uint8_t has_minus,
                   const char *lexeme,
-                  uint32_t lexeme_size,
                   struct codegen_value_info *info);
 
 void
 codegen_add_tmp(enum symbol_type type,
                 const char *lexeme,
-                uint32_t lexeme_size,
                 struct codegen_value_info *info);
 
 void

@@ -38,7 +38,7 @@ get_next_address(uint64_t *address, uint64_t size)
 }
 
 static uint64_t
-size_from_type_or_lexeme(enum symbol_type type, uint32_t lexeme_size)
+size_from_type(enum symbol_type type)
 {
     switch (type) {
         case SYMBOL_TYPE_FLOATING_POINT:
@@ -48,9 +48,7 @@ size_from_type_or_lexeme(enum symbol_type type, uint32_t lexeme_size)
         case SYMBOL_TYPE_LOGIC:
             return 1;
         case SYMBOL_TYPE_STRING:
-            // String's lexeme is inside quotation marks. -2
-            // In memory, it will have a \0 at the end. +1
-            return lexeme_size - 1;
+            return 256;
         default:
             UNREACHABLE();
     }
@@ -142,10 +140,7 @@ codegen_write_text(const char *fmt, ...)
 void
 codegen_add_unnit_value(enum symbol_type type, struct codegen_value_info *info)
 {
-    if (type != SYMBOL_TYPE_STRING)
-        info->size = size_from_type_or_lexeme(type, 0);
-    else
-        info->size = 256;
+    info->size = size_from_type(type);
 
     info->address = get_next_address(&current_bss_address, info->size);
     fputs("\n\tsection .bss\n", file);
@@ -160,7 +155,6 @@ codegen_add_value(enum symbol_type type,
                   enum symbol_class class,
                   uint8_t has_minus,
                   const char *lexeme,
-                  uint32_t lexeme_size,
                   struct codegen_value_info *info)
 {
     if (type != SYMBOL_TYPE_FLOATING_POINT && type != SYMBOL_TYPE_INTEGER &&
@@ -168,7 +162,7 @@ codegen_add_value(enum symbol_type type,
         UNREACHABLE();
     }
 
-    info->size = size_from_type_or_lexeme(type, lexeme_size);
+    info->size = size_from_type(type);
 
     uint64_t *addr_counter;
     const char *section_name;
@@ -231,21 +225,19 @@ codegen_add_value(enum symbol_type type,
 void
 codegen_add_tmp(enum symbol_type type,
                 const char *lexeme,
-                uint32_t lexeme_size,
                 struct codegen_value_info *info)
 {
     // We can't move strings / floating points from registers to memory,
     // declare them in memory.
     if (type == SYMBOL_TYPE_STRING || type == SYMBOL_TYPE_FLOATING_POINT) {
         const uint8_t has_minus = 0;
-        codegen_add_value(
-            type, SYMBOL_CLASS_CONST, has_minus, lexeme, lexeme_size, info);
+        codegen_add_value(type, SYMBOL_CLASS_CONST, has_minus, lexeme, info);
         return;
     }
 
     // Otherwise, move them to a register and then into memory.
     info->section = SYMBOL_SECTION_NONE;
-    info->size = size_from_type_or_lexeme(type, 0);
+    info->size = size_from_type(type);
     info->address = get_next_address(&current_bss_tmp_address, info->size);
 
     fputs("\n\tsection .text ; Moving constant to f.\n", file);
