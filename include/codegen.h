@@ -81,4 +81,8 @@ void
 codegen_perform_and(struct codegen_value_info *t_info,
                     const struct codegen_value_info *f_info);
 
+void
+codegen_perform_comparison(enum token operation_tok,
+                           struct codegen_value_info *exp_info,
+                           const struct codegen_value_info *exps_info);
 #endif

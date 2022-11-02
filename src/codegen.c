@@ -1,5 +1,6 @@
 #include "codegen.h"
 #include "symbol_table.h"
+#include "token.h"
 #include "utils.h"
 
 #include <assert.h>
@@ -649,4 +650,201 @@ codegen_perform_and(struct codegen_value_info *t_info,
             jne_label_buffer,
             end_label_buffer,
             t_info->address);
+}
+
+static void
+change_value_to_bool(struct codegen_value_info *info)
+{
+    info->section = SYMBOL_SECTION_NONE;
+    info->type = SYMBOL_TYPE_LOGIC;
+    info->size = size_from_type(info->type);
+}
+
+static void
+load_and_compare(struct codegen_value_info *exp_info,
+                 const struct codegen_value_info *exps_info)
+{
+    const char *exp_label = label_from_section(exp_info->section);
+    const char *exps_label = label_from_section(exps_info->section);
+
+    fputs("\n\tsection .text ; load_and_compare.\n", file);
+
+    switch (exp_info->type) {
+        case SYMBOL_TYPE_CHAR:
+        case SYMBOL_TYPE_LOGIC:
+            fprintf(file,
+                    "\tmov al, [%s + %lu]\n"
+                    "\tmov bl, [%s + %lu]\n"
+                    "\tcmp al, bl\n",
+                    exp_label,
+                    exp_info->address,
+                    exps_label,
+                    exps_info->address);
+            break;
+        case SYMBOL_TYPE_INTEGER:
+            fprintf(file,
+                    "\tmov eax, [%s + %lu]\n"
+                    "\tmov ebx, [%s + %lu]\n"
+                    "\tcmp eax, ebx\n",
+                    exp_label,
+                    exp_info->address,
+                    exps_label,
+                    exps_info->address);
+            break;
+        case SYMBOL_TYPE_FLOATING_POINT:
+            fprintf(file,
+                    "\tmovss xmm0, [%s + %lu]\n"
+                    "\tmovss xmm1, [%s + %lu]\n"
+                    "\tcomiss xmm0, xmm1\n",
+                    exp_label,
+                    exp_info->address,
+                    exps_label,
+                    exps_info->address);
+            break;
+        default:
+            UNREACHABLE();
+    }
+}
+
+static void
+generate_comparison_jump(enum token operation_tok, enum symbol_type type)
+{
+    const char *instr;
+    switch (operation_tok) {
+        case TOKEN_EQUAL:
+            instr = "je";
+            break;
+        case TOKEN_NOT_EQUAL:
+            instr = "jne";
+            break;
+        case TOKEN_LESS:
+            if (type != SYMBOL_TYPE_FLOATING_POINT)
+                instr = "jl";
+            else
+                instr = "jb";
+            break;
+        case TOKEN_LESS_EQUAL:
+            if (type != SYMBOL_TYPE_FLOATING_POINT)
+                instr = "jle";
+            else
+                instr = "jbe";
+            break;
+        case TOKEN_GREATER:
+            if (type != SYMBOL_TYPE_FLOATING_POINT)
+                instr = "jg";
+            else
+                instr = "ja";
+            break;
+        case TOKEN_GREATER_EQUAL:
+            if (type != SYMBOL_TYPE_FLOATING_POINT)
+                instr = "jge";
+            else
+                instr = "jae";
+            break;
+        default:
+            UNREACHABLE();
+    }
+
+    char cmp_ok_label[16];
+    get_next_label(cmp_ok_label, sizeof(cmp_ok_label));
+
+    char cmp_not_ok_label[16];
+    get_next_label(cmp_not_ok_label, sizeof(cmp_not_ok_label));
+
+    fputs("\t; generate_comparison_jump.\n", file);
+    fprintf(file,
+            "\t%s %s\n"
+            "\tmov al, 0\n"
+            "\tjmp %s\n"
+            "%s:\n"
+            "\tmov al, 1\n"
+            "%s:\n",
+            instr,
+            cmp_ok_label,
+            cmp_not_ok_label,
+            cmp_ok_label,
+            cmp_not_ok_label);
+}
+
+static void
+compare_string(enum token operation_tok,
+               struct codegen_value_info *exp_info,
+               const struct codegen_value_info *exps_info)
+{
+    const char *exp_label = label_from_section(exp_info->section);
+    const char *exps_label = label_from_section(exps_info->section);
+
+    char loop_beg_label[16];
+    get_next_label(loop_beg_label, sizeof(loop_beg_label));
+
+    char ne_label[16];
+    get_next_label(ne_label, sizeof(ne_label));
+
+    char e_label[16];
+    get_next_label(e_label, sizeof(e_label));
+
+    char end_label[16];
+    get_next_label(end_label, sizeof(end_label));
+
+    fprintf(file,
+            "\n\tsection .text ; compare_string.\n"
+            "\tmov rsi, %s\n"
+            "\tadd rsi, %lu\n"
+            "\tmov rdi, %s\n"
+            "\tadd rdi, %lu\n"
+            "%s:\n"
+            "\tmov al, [rsi]\n"
+            "\tmov bl, [rdi]\n"
+            "\tcmp al, bl\n"
+            "\tjne %s\n"
+            "\tcmp al, 0\n"
+            "\tje %s\n"
+            "\tadd rsi, 1\n"
+            "\tadd rdi, 1\n"
+            "\tjmp %s\n"
+            "%s:\n"
+            "\tmov al, %u\n"
+            "\tjmp %s\n"
+            "%s:\n"
+            "\tmov al, %u\n"
+            "%s:\n",
+            exp_label,
+            exp_info->address,
+            exps_label,
+            exps_info->address,
+            loop_beg_label,
+            ne_label,
+            e_label,
+            loop_beg_label,
+            ne_label,
+            operation_tok == TOKEN_EQUAL ? 0 : 1,
+            end_label,
+            e_label,
+            operation_tok == TOKEN_EQUAL ? 1 : 0,
+            end_label);
+}
+
+void
+codegen_perform_comparison(enum token operation_tok,
+                           struct codegen_value_info *exp_info,
+                           const struct codegen_value_info *exps_info)
+{
+    assert(exp_info->type == exps_info->type);
+
+    const uint64_t new_address = get_next_address(
+        &current_bss_tmp_address, size_from_type(SYMBOL_TYPE_LOGIC));
+
+    if (exp_info->type != SYMBOL_TYPE_STRING) {
+        load_and_compare(exp_info, exps_info);
+        generate_comparison_jump(operation_tok, exp_info->type);
+    } else {
+        compare_string(operation_tok, exp_info, exps_info);
+    }
+
+    fprintf(file,
+            "\tmov [TMP + %lu], al ; codegen_perform_comparison.\n",
+            new_address);
+
+    exp_info->address = new_address;
+    change_value_to_bool(exp_info);
 }

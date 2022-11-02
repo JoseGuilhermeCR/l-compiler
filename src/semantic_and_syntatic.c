@@ -993,31 +993,8 @@ syntatic_exp(struct syntatic_ctx *ctx, struct codegen_value_info *exp_info)
             break;
     }
 
-    if (!had_comparison)
-        return 0;
-
-    switch (operation_tok) {
-        case TOKEN_EQUAL:
-            break;
-
-        case TOKEN_NOT_EQUAL:
-            break;
-
-        case TOKEN_LESS:
-            break;
-
-        case TOKEN_LESS_EQUAL:
-            break;
-
-        case TOKEN_GREATER:
-            break;
-
-        case TOKEN_GREATER_EQUAL:
-            break;
-
-        default:
-            UNREACHABLE();
-    }
+    if (had_comparison)
+        codegen_perform_comparison(operation_tok, exp_info, &exps_info);
 
     return 0;
 }
