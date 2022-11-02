@@ -20,6 +20,7 @@
 
 static FILE *file;
 
+static uint64_t current_bss_tmp_address;
 static uint64_t current_data_address;
 static uint64_t current_bss_address;
 static uint64_t current_rodata_address;
@@ -135,58 +136,54 @@ codegen_write_text(const char *fmt, ...)
 }
 
 void
-codegen_add_unnit_value(struct symbol *id_entry)
+codegen_add_unnit_value(enum symbol_type type, struct codegen_value_info *info)
 {
-    uint64_t size;
-    if (id_entry->symbol_type != SYMBOL_TYPE_STRING)
-        size = size_from_type_or_lexeme(id_entry->symbol_type, 0);
+    if (type != SYMBOL_TYPE_STRING)
+        info->size = size_from_type_or_lexeme(type, 0);
     else
-        size = 256;
+        info->size = 256;
 
-    id_entry->size = size;
-
-    const uint64_t address = get_next_address(&current_bss_address, size);
+    info->address = get_next_address(&current_bss_address, info->size);
     fputs("\n\tsection .bss\n", file);
-    fprintf(file, "\tresb %lu\t; @ 0x%lx\n", size, address);
+    fprintf(file, "\tresb %lu\t; @ 0x%lx\n", info->size, info->address);
 
-    id_entry->address = address;
-    id_entry->symbol_section = SYMBOL_SECTION_BSS;
+    info->section = SYMBOL_SECTION_BSS;
 }
 
 void
-codegen_add_value(struct symbol *id_entry,
+codegen_add_value(enum symbol_type type,
+                  enum symbol_class class,
                   uint8_t has_minus,
                   const char *lexeme,
-                  uint32_t lexeme_size)
+                  uint32_t lexeme_size,
+                  struct codegen_value_info *info)
 {
-    if (id_entry->symbol_type != SYMBOL_TYPE_FLOATING_POINT &&
-        id_entry->symbol_type != SYMBOL_TYPE_INTEGER && has_minus) {
+    if (type != SYMBOL_TYPE_FLOATING_POINT && type != SYMBOL_TYPE_INTEGER &&
+        has_minus) {
         UNREACHABLE();
     }
 
-    const uint64_t size =
-        size_from_type_or_lexeme(id_entry->symbol_type, lexeme_size);
-    id_entry->size = size;
+    info->size = size_from_type_or_lexeme(type, lexeme_size);
 
     uint64_t *addr_counter;
     const char *section_name;
-    if (id_entry->symbol_class == SYMBOL_CLASS_VAR) {
-        id_entry->symbol_section = SYMBOL_SECTION_DATA;
+    if (class == SYMBOL_CLASS_VAR) {
+        info->section = SYMBOL_SECTION_DATA;
         addr_counter = &current_data_address;
         section_name = ".data";
-    } else if (id_entry->symbol_class == SYMBOL_CLASS_CONST) {
-        id_entry->symbol_section = SYMBOL_SECTION_RODATA;
+    } else if (class == SYMBOL_CLASS_CONST) {
+        info->section = SYMBOL_SECTION_RODATA;
         addr_counter = &current_rodata_address;
         section_name = ".rodata";
     } else {
         UNREACHABLE();
     }
 
-    const uint64_t address = get_next_address(addr_counter, size);
+    info->address = get_next_address(addr_counter, info->size);
 
     fprintf(file, "\n\tsection %s\n", section_name);
 
-    switch (id_entry->symbol_type) {
+    switch (type) {
         case SYMBOL_TYPE_LOGIC:
         case SYMBOL_TYPE_CHAR:
         case SYMBOL_TYPE_STRING:
@@ -203,7 +200,7 @@ codegen_add_value(struct symbol *id_entry,
     if (has_minus)
         fputc('-', file);
 
-    switch (id_entry->symbol_type) {
+    switch (type) {
         case SYMBOL_TYPE_LOGIC:
             if (is_case_insensitive_equal("true", lexeme))
                 fputc('1', file);
@@ -222,7 +219,30 @@ codegen_add_value(struct symbol *id_entry,
             UNREACHABLE();
     }
 
-    fprintf(file, "\t; @ 0x%lx\n", address);
+    fprintf(file, "\t; @ 0x%lx\n", info->address);
+}
 
-    id_entry->address = address;
+void
+codegen_add_tmp(enum symbol_type type,
+                const char *lexeme,
+                uint32_t lexeme_size,
+                struct codegen_value_info *info)
+{
+    // We can't move strings / floating points from registers to memory,
+    // declare them in memory.
+    if (type == SYMBOL_TYPE_STRING || type == SYMBOL_TYPE_FLOATING_POINT) {
+        const uint8_t has_minus = 0;
+        codegen_add_value(
+            type, SYMBOL_CLASS_CONST, has_minus, lexeme, lexeme_size, info);
+        return;
+    }
+
+    // Otherwise, move them to a register and then into memory.
+    info->section = SYMBOL_SECTION_NONE;
+    info->size = size_from_type_or_lexeme(type, 0);
+    info->address = get_next_address(&current_bss_tmp_address, info->size);
+
+    fputs("\n\tsection .text\n", file);
+    fprintf(file, "\tmov rax, %s\n", lexeme);
+    fprintf(file, "\tmov [TMP + %lu], rax\n", info->address);
 }
