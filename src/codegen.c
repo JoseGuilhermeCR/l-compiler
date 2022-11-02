@@ -24,6 +24,13 @@ static uint64_t current_bss_tmp_address;
 static uint64_t current_data_address;
 static uint64_t current_bss_address;
 static uint64_t current_rodata_address;
+static uint64_t current_label_counter;
+
+static uint64_t
+get_next_label_number(void)
+{
+    return current_label_counter++;
+}
 
 static uint64_t
 get_next_address(uint64_t *address, uint64_t size)
@@ -408,6 +415,38 @@ codegen_perform_logical_or(struct codegen_value_info *exps_info,
                            struct codegen_value_info *t_info)
 {
     assert(exps_info->type == t_info->type);
+
+    const uint64_t original_address = exps_info->address;
+    const char *exps_label = label_from_section(exps_info->section);
+    const char *t_label = label_from_section(t_info->section);
+
+    exps_info->section = SYMBOL_SECTION_NONE;
+    exps_info->address =
+        get_next_address(&current_bss_tmp_address, exps_info->size);
+
+    char je_label_buffer[32];
+    snprintf(je_label_buffer,
+             sizeof(je_label_buffer),
+             "L%lu",
+             get_next_label_number());
+
+    fprintf(file,
+            "\n\tsection .text ; codegen_perform_logical_or.\n"
+            "\tmov al, [%s + %lu]\n"
+            "\tmov bl, [%s + %lu]\n"
+            "\tadd al, bl\n"
+            "\tcmp al, 0\n"
+            "\tje %s\n"
+            "\tmov al, 1\n"
+            "%s:\n"
+            "\tmov [TMP + %lu], al\n",
+            exps_label,
+            original_address,
+            t_label,
+            t_info->address,
+            je_label_buffer,
+            je_label_buffer,
+            exps_info->address);
 }
 
 void
