@@ -46,4 +46,16 @@ codegen_logic_negate(struct codegen_value_info *f);
 void
 codegen_convert_to_floating_point(struct codegen_value_info *info);
 
+void
+codegen_perform_addition(struct codegen_value_info *exps_info,
+                         struct codegen_value_info *t_info);
+
+void
+codegen_perform_subtraction(struct codegen_value_info *exps_info,
+                            struct codegen_value_info *t_info);
+
+void
+codegen_perform_logical_or(struct codegen_value_info *exps_info,
+                           struct codegen_value_info *t_info);
+
 #endif

@@ -139,8 +139,9 @@ semantic_apply_sr25(enum token operation_tok,
             if (is_arithmetic) {
                 // If any of the operands is a floating point.
                 if (exps_info->type == SYMBOL_TYPE_FLOATING_POINT ||
-                        t_info->type == SYMBOL_TYPE_FLOATING_POINT) {
-                    // Make sure we convert the other one to floating point as well.
+                    t_info->type == SYMBOL_TYPE_FLOATING_POINT) {
+                    // Make sure we convert the other one to floating point as
+                    // well.
                     if (exps_info->type != SYMBOL_TYPE_FLOATING_POINT)
                         codegen_convert_to_floating_point(exps_info);
                     else
@@ -249,6 +250,7 @@ semantic_apply_sr21(enum symbol_type t_type, uint8_t had_signal)
     if (t_type != SYMBOL_TYPE_INTEGER && t_type != SYMBOL_TYPE_FLOATING_POINT)
         return SEMANTIC_ERROR_TYPE_MISMATCH;
 
+    //codegen_negate;
     return SEMANTIC_OK;
 }
 
@@ -792,7 +794,8 @@ syntatic_f(struct syntatic_ctx *ctx, struct codegen_value_info *f_info)
         case TOKEN_CONSTANT: {
             MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
             semantic_apply_sr18(&f_info->type, ctx->last_entry.constant_type);
-            codegen_add_tmp(f_info->type, ctx->last_entry.lexeme.buffer, f_info);
+            codegen_add_tmp(
+                f_info->type, ctx->last_entry.lexeme.buffer, f_info);
             break;
         }
         case TOKEN_IDENTIFIER: {
@@ -903,10 +906,22 @@ syntatic_exps(struct syntatic_ctx *ctx, struct codegen_value_info *exps_info)
         if (syntatic_t(ctx, &t_info) < 0)
             return -1;
 
-        HANDLE_SEMANTIC_RESULT(
-            ctx, semantic_apply_sr25(tok, exps_info, &t_info));
+        HANDLE_SEMANTIC_RESULT(ctx,
+                               semantic_apply_sr25(tok, exps_info, &t_info));
 
-        //codegen_
+        switch (tok) {
+            case TOKEN_PLUS:
+                codegen_perform_addition(exps_info, &t_info);
+                break;
+            case TOKEN_MINUS:
+                codegen_perform_subtraction(exps_info, &t_info);
+                break;
+            case TOKEN_LOGICAL_OR:
+                codegen_perform_logical_or(exps_info, &t_info);
+                break;
+            default:
+                UNREACHABLE();
+        }
 
         tok = ctx->entry->token;
     }

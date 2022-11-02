@@ -348,3 +348,57 @@ codegen_convert_to_floating_point(struct codegen_value_info *info)
     // Place it into the newly generated address.
     fprintf(file, "\tmovss [TMP + %lu], xmm0\n", info->address);
 }
+
+static void
+perform_addition_or_subtraction(const char *instr,
+                                struct codegen_value_info *exps_info,
+                                struct codegen_value_info *t_info)
+{
+    assert(exps_info->type == t_info->type);
+
+    const uint64_t original_address = exps_info->address;
+    const char *exps_label = label_from_section(exps_info->section);
+    const char *t_label = label_from_section(t_info->section);
+
+    exps_info->section = SYMBOL_SECTION_NONE;
+    exps_info->address =
+        get_next_address(&current_bss_tmp_address, exps_info->size);
+
+    fputs("\n\tsection .text ; perform_addition_or_subtraction.\n", file);
+
+    if (exps_info->type == SYMBOL_TYPE_FLOATING_POINT) {
+        fprintf(
+            file, "\tmovss xmm0, [%s + %lu]\n", exps_label, original_address);
+        fprintf(file, "\tmovss xmm1, [%s + %lu]\n", t_label, t_info->address);
+        fprintf(file, "\t%sss xmm0, xmm1\n", instr);
+        fprintf(file, "\tmovss [TMP + %lu], xmm0\n", exps_info->address);
+    } else if (exps_info->type == SYMBOL_TYPE_INTEGER) {
+        fprintf(file, "\tmov eax, [%s + %lu]\n", exps_label, original_address);
+        fprintf(file, "\tmov ebx, [%s + %lu]\n", t_label, t_info->address);
+        fprintf(file, "\t%s eax, ebx\n", instr);
+        fprintf(file, "\tmov [TMP + %lu], eax\n", exps_info->address);
+    } else {
+        UNREACHABLE();
+    }
+}
+
+void
+codegen_perform_addition(struct codegen_value_info *exps_info,
+                         struct codegen_value_info *t_info)
+{
+    perform_addition_or_subtraction("add", exps_info, t_info);
+}
+
+void
+codegen_perform_subtraction(struct codegen_value_info *exps_info,
+                            struct codegen_value_info *t_info)
+{
+    perform_addition_or_subtraction("sub", exps_info, t_info);
+}
+
+void
+codegen_perform_logical_or(struct codegen_value_info *exps_info,
+                           struct codegen_value_info *t_info)
+{
+    assert(exps_info->type == t_info->type);
+}
