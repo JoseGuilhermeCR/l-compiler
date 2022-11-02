@@ -58,6 +58,7 @@ void
 codegen_perform_logical_or(struct codegen_value_info *exps_info,
                            struct codegen_value_info *t_info);
 
-void codegen_negate(struct codegen_value_info *t_info);
+void
+codegen_negate(struct codegen_value_info *t_info);
 
 #endif

@@ -308,17 +308,15 @@ codegen_logic_negate(struct codegen_value_info *f)
     // Generate a new temporary address.
     f->address = get_next_address(&current_bss_tmp_address, f->size);
 
-    fputs("\n\tsection .text ; codegen_logic_negate.\n", file);
-
-    // Move value from f to al.
-    fprintf(file, "\tmov al, [%s + %lu]\n", label, original_address);
-
-    // Negate it. (Remember the instructions we use are limited.)
-    fputs("\tneg al\n", file);
-    fputs("\tadd al, 1\n", file);
-
-    // Move value from rax to f.
-    fprintf(file, "\tmov [TMP + %lu], al\n", f->address);
+    fprintf(file,
+            "\n\tsection .text ; codegen_logic_negate.\n"
+            "\tmov al, [%s + %lu]\n"
+            "\tneg al\n"
+            "\tadd al, 1\n"
+            "\tmov [TMP + %lu], al\n",
+            label,
+            original_address,
+            f->address);
 }
 
 void
@@ -334,19 +332,15 @@ codegen_convert_to_floating_point(struct codegen_value_info *info)
     info->type = SYMBOL_TYPE_FLOATING_POINT;
     info->address = get_next_address(&current_bss_tmp_address, info->size);
 
-    fputs("\n\tsection .text ; codegen_convert_to_floating_point.\n", file);
-
-    // Move value from info to eax.
-    fprintf(file, "\tmov eax, [%s + %lu]\n", label, original_address);
-
-    // Extend it's sign.
-    fputs("\tcdqe\n", file);
-
-    // Convert the value from rax and place it in xmm0.
-    fputs("\tcvtsi2ss xmm0, rax\n", file);
-
-    // Place it into the newly generated address.
-    fprintf(file, "\tmovss [TMP + %lu], xmm0\n", info->address);
+    fprintf(file,
+            "\n\tsection .text ; codegen_convert_to_floating_point.\n"
+            "\tmov eax, [%s + %lu]\n"
+            "\tcdqe\n"
+            "\tcvtsi2ss xmm0, rax\n"
+            "\tmovss [TMP + %lu], xmm0\n",
+            label,
+            original_address,
+            info->address);
 }
 
 static void
@@ -367,16 +361,29 @@ perform_addition_or_subtraction(const char *instr,
     fputs("\n\tsection .text ; perform_addition_or_subtraction.\n", file);
 
     if (exps_info->type == SYMBOL_TYPE_FLOATING_POINT) {
-        fprintf(
-            file, "\tmovss xmm0, [%s + %lu]\n", exps_label, original_address);
-        fprintf(file, "\tmovss xmm1, [%s + %lu]\n", t_label, t_info->address);
-        fprintf(file, "\t%sss xmm0, xmm1\n", instr);
-        fprintf(file, "\tmovss [TMP + %lu], xmm0\n", exps_info->address);
+        fprintf(file,
+                "\tmovss xmm0, [%s + %lu]\n"
+                "\tmovss xmm1, [%s + %lu]\n"
+                "\t%sss xmm0, xmm1\n"
+                "\tmovss [TMP + %lu], xmm0\n",
+                exps_label,
+                original_address,
+                t_label,
+                t_info->address,
+                instr,
+                exps_info->address);
     } else if (exps_info->type == SYMBOL_TYPE_INTEGER) {
-        fprintf(file, "\tmov eax, [%s + %lu]\n", exps_label, original_address);
-        fprintf(file, "\tmov ebx, [%s + %lu]\n", t_label, t_info->address);
-        fprintf(file, "\t%s eax, ebx\n", instr);
-        fprintf(file, "\tmov [TMP + %lu], eax\n", exps_info->address);
+        fprintf(file,
+                "\tmov eax, [%s + %lu]\n"
+                "\tmov ebx, [%s + %lu]\n"
+                "\t%s eax, ebx\n"
+                "\tmov [TMP + %lu], eax\n",
+                exps_label,
+                original_address,
+                t_label,
+                t_info->address,
+                instr,
+                exps_info->address);
     } else {
         UNREACHABLE();
     }
@@ -403,7 +410,8 @@ codegen_perform_logical_or(struct codegen_value_info *exps_info,
     assert(exps_info->type == t_info->type);
 }
 
-void codegen_negate(struct codegen_value_info *t_info)
+void
+codegen_negate(struct codegen_value_info *t_info)
 {
     const uint64_t original_address = t_info->address;
     const char *label = label_from_section(t_info->section);
@@ -420,15 +428,17 @@ void codegen_negate(struct codegen_value_info *t_info)
                 "\tmovss xmm1, [%s + %lu]\n"
                 "\tsubss xmm0, xmm1\n"
                 "\tmovss [TMP + %lu], xmm0\n",
-                label, original_address, t_info->address
-               );
+                label,
+                original_address,
+                t_info->address);
     } else if (t_info->type == SYMBOL_TYPE_INTEGER) {
         fprintf(file,
                 "\tmov eax, [%s + %lu]\n"
                 "\tneg eax\n"
                 "\tmov [TMP + %lu], eax\n",
-                label, original_address, t_info->address
-               );
+                label,
+                original_address,
+                t_info->address);
     } else {
         UNREACHABLE();
     }

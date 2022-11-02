@@ -247,7 +247,8 @@ semantic_apply_sr21(struct codegen_value_info *t_info, uint8_t had_signal)
     if (!had_signal)
         return SEMANTIC_OK;
 
-    if (t_info->type != SYMBOL_TYPE_INTEGER && t_info->type != SYMBOL_TYPE_FLOATING_POINT) {
+    if (t_info->type != SYMBOL_TYPE_INTEGER &&
+        t_info->type != SYMBOL_TYPE_FLOATING_POINT) {
         return SEMANTIC_ERROR_TYPE_MISMATCH;
     }
 
