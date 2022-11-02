@@ -144,7 +144,7 @@ semantic_apply_sr25(enum token operation_tok,
                     // well.
                     if (exps_info->type != SYMBOL_TYPE_FLOATING_POINT)
                         codegen_convert_to_floating_point(exps_info);
-                    else
+                    else if (t_info->type != SYMBOL_TYPE_FLOATING_POINT)
                         codegen_convert_to_floating_point(t_info);
                 }
             } else {
@@ -183,9 +183,9 @@ semantic_apply_sr24(enum token operation_tok,
                     // Make sure we convert the other one to floating point as
                     // well.
                     if (f_info->type != SYMBOL_TYPE_FLOATING_POINT)
-                        codegen_convert_to_floating_point(t_info);
-                    else
                         codegen_convert_to_floating_point(f_info);
+                    else if (t_info->type != SYMBOL_TYPE_FLOATING_POINT)
+                        codegen_convert_to_floating_point(t_info);
                 }
             } else {
                 return SEMANTIC_ERROR_TYPE_MISMATCH;
