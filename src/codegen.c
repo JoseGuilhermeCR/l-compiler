@@ -84,7 +84,7 @@ static void
 add_exit_syscall(uint8_t error_code)
 {
     fprintf(file,
-            "\n\tsection .text\n"
+            "\n\tsection .text ; Exit syscall.\n"
             "\tmov rax, 60\n"
             "\tmov rsi, %u\n"
             "\tsyscall\n",
@@ -242,7 +242,7 @@ codegen_add_tmp(enum symbol_type type,
     info->size = size_from_type_or_lexeme(type, 0);
     info->address = get_next_address(&current_bss_tmp_address, info->size);
 
-    fputs("\n\tsection .text\n", file);
+    fputs("\n\tsection .text ; Moving constant to f.\n", file);
 
     if (type != SYMBOL_TYPE_LOGIC) {
         fprintf(file, "\tmov rax, %s\n", lexeme);
@@ -267,7 +267,7 @@ codegen_negate_f(struct codegen_value_info *f)
     // Generate a new temporary address.
     f->address = get_next_address(&current_bss_tmp_address, f->size);
 
-    fputs("\n\tsection .text\n", file);
+    fputs("\n\tsection .text ; Negating f.\n", file);
 
     // Move value from f1 to rax.
     fprintf(file, "\tmov rax, [TMP + %lu]\n", original_address);
