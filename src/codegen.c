@@ -243,6 +243,18 @@ codegen_add_tmp(enum symbol_type type,
     info->address = get_next_address(&current_bss_tmp_address, info->size);
 
     fputs("\n\tsection .text\n", file);
-    fprintf(file, "\tmov rax, %s\n", lexeme);
+
+    if (type != SYMBOL_TYPE_LOGIC) {
+        fprintf(file, "\tmov rax, %s\n", lexeme);
+    } else {
+        if (is_case_insensitive_equal("true", lexeme)) {
+            fputs("\tmov rax, 1\n", file);
+        } else if (is_case_insensitive_equal("false", lexeme)) {
+            fputs("\tmov rax, 0\n", file);
+        } else {
+            UNREACHABLE();
+        }
+    }
+
     fprintf(file, "\tmov [TMP + %lu], rax\n", info->address);
 }
