@@ -866,6 +866,8 @@ syntatic_t(struct syntatic_ctx *ctx, struct codegen_value_info *t_info)
 
     semantic_apply_sr23(&t_info->type, f_info.type);
 
+    memcpy(t_info, &f_info, sizeof(struct codegen_value_info));
+
     enum token tok = ctx->entry->token;
     while (tok == TOKEN_TIMES || tok == TOKEN_LOGICAL_AND || tok == TOKEN_MOD ||
            tok == TOKEN_DIV || tok == TOKEN_DIVISION) {
@@ -905,6 +907,8 @@ syntatic_exps(struct syntatic_ctx *ctx, struct codegen_value_info *exps_info)
 
     semantic_apply_sr22(&exps_info->type, t_info.type);
 
+    memcpy(exps_info, &t_info, sizeof(struct codegen_value_info));
+
     tok = ctx->entry->token;
     while (tok == TOKEN_PLUS || tok == TOKEN_MINUS || tok == TOKEN_LOGICAL_OR) {
         MATCH_OR_ERROR(ctx, tok);
@@ -931,6 +935,8 @@ syntatic_exp(struct syntatic_ctx *ctx, struct codegen_value_info *exp_info)
         return -1;
 
     semantic_apply_sr20(&exp_info->type, exps_info.type);
+
+    memcpy(exp_info, &exps_info, sizeof(struct codegen_value_info));
 
     switch (ctx->entry->token) {
         case TOKEN_EQUAL:
