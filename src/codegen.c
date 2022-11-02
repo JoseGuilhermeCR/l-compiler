@@ -353,7 +353,7 @@ codegen_convert_to_floating_point(struct codegen_value_info *info)
 static void
 perform_addition_or_subtraction(const char *instr,
                                 struct codegen_value_info *exps_info,
-                                struct codegen_value_info *t_info)
+                                const struct codegen_value_info *t_info)
 {
     assert(exps_info->type == t_info->type);
 
@@ -398,21 +398,21 @@ perform_addition_or_subtraction(const char *instr,
 
 void
 codegen_perform_addition(struct codegen_value_info *exps_info,
-                         struct codegen_value_info *t_info)
+                         const struct codegen_value_info *t_info)
 {
     perform_addition_or_subtraction("add", exps_info, t_info);
 }
 
 void
 codegen_perform_subtraction(struct codegen_value_info *exps_info,
-                            struct codegen_value_info *t_info)
+                            const struct codegen_value_info *t_info)
 {
     perform_addition_or_subtraction("sub", exps_info, t_info);
 }
 
 void
 codegen_perform_logical_or(struct codegen_value_info *exps_info,
-                           struct codegen_value_info *t_info)
+                           const struct codegen_value_info *t_info)
 {
     assert(exps_info->type == t_info->type);
 
@@ -478,4 +478,132 @@ codegen_negate(struct codegen_value_info *t_info)
     } else {
         UNREACHABLE();
     }
+}
+
+void
+codegen_perform_multiplication(struct codegen_value_info *t_info,
+                               const struct codegen_value_info *f_info)
+{
+    assert(t_info->type == f_info->type);
+
+    const uint64_t original_address = t_info->address;
+    const char *t_label = label_from_section(t_info->section);
+    const char *f_label = label_from_section(f_info->section);
+
+    fputs("\n\tsection .text ; codegen_perform_multiplication.\n", file);
+
+    t_info->section = SYMBOL_SECTION_NONE;
+    t_info->address = get_next_address(&current_bss_tmp_address, t_info->size);
+
+    if (t_info->type == SYMBOL_TYPE_FLOATING_POINT) {
+        fprintf(file,
+                "\tmovss xmm0, [%s + %lu]\n"
+                "\tmovss xmm1, [%s + %lu]\n"
+                "\tmulss xmm0, xmm1\n"
+                "\tmovss [TMP + %lu], xmm0\n",
+                t_label,
+                original_address,
+                f_label,
+                f_info->address,
+                t_info->address);
+    } else if (t_info->type == SYMBOL_TYPE_INTEGER) {
+        fprintf(file,
+                "\tmov eax, [%s + %lu]\n"
+                "\tmov ebx, [%s + %lu]\n"
+                "\timul ebx\n"
+                "\tmov [TMP + %lu], eax\n",
+                t_label,
+                original_address,
+                f_label,
+                f_info->address,
+                t_info->address);
+    } else {
+        UNREACHABLE();
+    }
+}
+
+void
+codegen_perform_division(struct codegen_value_info *t_info,
+                         const struct codegen_value_info *f_info)
+{
+    assert(t_info->type == f_info->type);
+
+    if (t_info->type == SYMBOL_TYPE_INTEGER) {
+        codegen_perform_integer_division(t_info, f_info);
+        return;
+    }
+
+    const uint64_t original_address = t_info->address;
+    const char *t_label = label_from_section(t_info->section);
+    const char *f_label = label_from_section(f_info->section);
+
+    fputs("\n\tsection .text ; codegen_perform_division.\n", file);
+
+    t_info->section = SYMBOL_SECTION_NONE;
+    t_info->address = get_next_address(&current_bss_tmp_address, t_info->size);
+
+    if (t_info->type == SYMBOL_TYPE_FLOATING_POINT) {
+        fprintf(file,
+                "\tmovss xmm0, [%s + %lu]\n"
+                "\tmovss xmm1, [%s + %lu]\n"
+                "\tdivss xmm0, xmm1\n"
+                "\tmovss [TMP + %lu], xmm0\n",
+                t_label,
+                original_address,
+                f_label,
+                f_info->address,
+                t_info->address);
+    } else {
+        UNREACHABLE();
+    }
+}
+
+static void
+perform_integer_division(struct codegen_value_info *t_info,
+                         const struct codegen_value_info *f_info)
+{
+    assert(t_info->type == f_info->type);
+
+    const uint64_t original_address = t_info->address;
+    const char *t_label = label_from_section(t_info->section);
+    const char *f_label = label_from_section(f_info->section);
+
+    fputs("\n\tsection .text ; perform_integer_division.\n", file);
+
+    t_info->section = SYMBOL_SECTION_NONE;
+    t_info->address = get_next_address(&current_bss_tmp_address, t_info->size);
+
+    if (t_info->type == SYMBOL_TYPE_INTEGER) {
+        fprintf(file,
+                "\tmov eax, [%s + %lu]\n"
+                "\tmov ebx, [%s + %lu]\n"
+                "\tcdq\n"
+                "\tidiv ebx\n",
+                t_label,
+                original_address,
+                f_label,
+                f_info->address);
+    } else {
+        UNREACHABLE();
+    }
+}
+
+void
+codegen_perform_integer_division(struct codegen_value_info *t_info,
+                                 const struct codegen_value_info *f_info)
+{
+    perform_integer_division(t_info, f_info);
+    fprintf(file,
+            "\tmov [TMP + %lu], eax ; codegen_perform_integer_division\n",
+            t_info->address);
+}
+
+void
+codegen_perform_mod(struct codegen_value_info *t_info,
+                    const struct codegen_value_info *f_info)
+{
+    perform_integer_division(t_info, f_info);
+    fprintf(file,
+            "\tmov [TMP + %lu], edx ; codegen_perform_integer_division\n",
+            t_info->address);
 }

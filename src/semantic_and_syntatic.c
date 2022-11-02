@@ -869,6 +869,24 @@ syntatic_t(struct syntatic_ctx *ctx, struct codegen_value_info *t_info)
 
         HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr24(tok, t_info, &f_info));
 
+        switch (tok) {
+            case TOKEN_TIMES:
+                codegen_perform_multiplication(t_info, &f_info);
+                break;
+            case TOKEN_DIVISION:
+                codegen_perform_division(t_info, &f_info);
+                break;
+            case TOKEN_LOGICAL_AND:
+            case TOKEN_MOD:
+                codegen_perform_mod(t_info, &f_info);
+                break;
+            case TOKEN_DIV:
+                codegen_perform_integer_division(t_info, &f_info);
+                break;
+            default:
+                UNREACHABLE();
+        }
+
         tok = ctx->entry->token;
     }
 
