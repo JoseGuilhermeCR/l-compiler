@@ -257,19 +257,27 @@ codegen_add_tmp(enum symbol_type type,
 
     fputs("\n\tsection .text ; codegen_add_tmp.\n", file);
 
+    const char *reg;
+    if (type == SYMBOL_TYPE_INTEGER)
+        reg = "eax";
+    else if (type == SYMBOL_TYPE_CHAR || type == SYMBOL_TYPE_LOGIC)
+        reg = "al";
+    else
+        UNREACHABLE();
+
     if (type != SYMBOL_TYPE_LOGIC) {
-        fprintf(file, "\tmov rax, %s\n", lexeme);
+        fprintf(file, "\tmov %s, %s\n", reg, lexeme);
     } else {
         if (is_case_insensitive_equal("true", lexeme)) {
-            fputs("\tmov rax, 1\n", file);
+            fputs("\tmov al, 1\n", file);
         } else if (is_case_insensitive_equal("false", lexeme)) {
-            fputs("\tmov rax, 0\n", file);
+            fputs("\tmov al, 0\n", file);
         } else {
             UNREACHABLE();
         }
     }
 
-    fprintf(file, "\tmov [TMP + %lu], rax\n", info->address);
+    fprintf(file, "\tmov [TMP + %lu], %s\n", info->address, reg);
 }
 
 static const char *
