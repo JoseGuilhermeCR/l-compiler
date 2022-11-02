@@ -28,6 +28,8 @@ static uint64_t current_rodata_address;
 static uint64_t
 get_next_address(uint64_t *address, uint64_t size)
 {
+    assert(size && "Size cannot be 0.");
+
     const uint64_t mod = *address % size;
     uint64_t not_aligned_by = 0;
     if (mod)
@@ -143,7 +145,7 @@ codegen_add_unnit_value(enum symbol_type type, struct codegen_value_info *info)
     info->size = size_from_type(type);
 
     info->address = get_next_address(&current_bss_address, info->size);
-    fputs("\n\tsection .bss\n", file);
+    fputs("\n\tsection .bss ; codegen_add_unnit_value.\n", file);
     fprintf(file, "\talignb %lu\n", info->size);
     fprintf(file, "\tresb %lu\t; @ 0x%lx\n", info->size, info->address);
 
@@ -180,7 +182,7 @@ codegen_add_value(enum symbol_type type,
 
     info->address = get_next_address(addr_counter, info->size);
 
-    fprintf(file, "\n\tsection %s\n", section_name);
+    fprintf(file, "\n\tsection %s ; codegen_add_value.\n", section_name);
     fprintf(file, "\talign %lu\n", info->size);
 
     switch (type) {
@@ -253,7 +255,7 @@ codegen_add_tmp(enum symbol_type type,
     info->size = size_from_type(type);
     info->address = get_next_address(&current_bss_tmp_address, info->size);
 
-    fputs("\n\tsection .text ; Moving constant to f.\n", file);
+    fputs("\n\tsection .text ; codegen_add_tmp.\n", file);
 
     if (type != SYMBOL_TYPE_LOGIC) {
         fprintf(file, "\tmov rax, %s\n", lexeme);
@@ -270,23 +272,71 @@ codegen_add_tmp(enum symbol_type type,
     fprintf(file, "\tmov [TMP + %lu], rax\n", info->address);
 }
 
+static const char *
+label_from_section(enum symbol_section section)
+{
+    switch (section) {
+        case SYMBOL_SECTION_NONE:
+            return "TMP";
+        case SYMBOL_SECTION_BSS:
+            return "UNNIT_MEM";
+        case SYMBOL_SECTION_DATA:
+            return "INIT_MEM";
+        case SYMBOL_SECTION_RODATA:
+            return "CONST_MEM";
+        default:
+            UNREACHABLE();
+    }
+}
+
 void
 codegen_negate_f(struct codegen_value_info *f)
 {
+    assert(f->type == SYMBOL_TYPE_LOGIC);
+
     const uint64_t original_address = f->address;
+    const char *label = label_from_section(f->section);
 
     // Generate a new temporary address.
     f->address = get_next_address(&current_bss_tmp_address, f->size);
 
-    fputs("\n\tsection .text ; Negating f.\n", file);
+    fputs("\n\tsection .text ; codegen_negate_f.\n", file);
 
-    // Move value from f1 to rax.
-    fprintf(file, "\tmov rax, [TMP + %lu]\n", original_address);
+    // Move value from f to al.
+    fprintf(file, "\tmov al, [%s + %lu]\n", label, original_address);
 
     // Negate it. (Remember the instructions we use are limited.)
-    fputs("\tneg rax\n", file);
-    fputs("\tadd rax, 1\n", file);
+    fputs("\tneg al\n", file);
+    fputs("\tadd al, 1\n", file);
 
     // Move value from rax to f.
-    fprintf(file, "\tmov [TMP + %lu], rax\n", f->address);
+    fprintf(file, "\tmov [TMP + %lu], al\n", f->address);
+}
+
+void
+codegen_convert_to_floating_point(struct codegen_value_info *info)
+{
+    assert(info->type == SYMBOL_TYPE_INTEGER);
+
+    const uint64_t original_address = info->address;
+    const char *label = label_from_section(info->section);
+
+    // Update value information.
+    info->section = SYMBOL_SECTION_NONE;
+    info->type = SYMBOL_TYPE_FLOATING_POINT;
+    info->address = get_next_address(&current_bss_tmp_address, info->size);
+
+    fputs("\n\tsection .text ; codegen_convert_to_floating_point.\n", file);
+
+    // Move value from info to eax.
+    fprintf(file, "\tmov eax, [%s + %lu]\n", label, original_address);
+
+    // Extend it's sign.
+    fputs("\tcdqe\n", file);
+
+    // Convert the value from rax and place it in xmm0.
+    fputs("\tcvtsi2ss xmm0, rax\n", file);
+
+    // Place it into the newly generated address.
+    fprintf(file, "\tmovss [TMP + %lu], xmm0\n", info->address);
 }

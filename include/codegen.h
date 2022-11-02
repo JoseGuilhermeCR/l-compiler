@@ -43,4 +43,7 @@ codegen_add_tmp(enum symbol_type type,
 void
 codegen_negate_f(struct codegen_value_info *f);
 
+void
+codegen_convert_to_floating_point(struct codegen_value_info *info);
+
 #endif

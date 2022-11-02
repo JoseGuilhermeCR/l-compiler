@@ -127,37 +127,33 @@ semantic_apply_sr26(enum token operation_tok,
 
 static enum semantic_result
 semantic_apply_sr25(enum token operation_tok,
-                    enum symbol_type *exps_type,
-                    enum symbol_type t_type)
+                    struct codegen_value_info *exps_info,
+                    struct codegen_value_info *t_info)
 {
     const uint8_t is_arithmetic =
-        is_st_arithmetic(*exps_type) && is_st_arithmetic(t_type);
+        is_st_arithmetic(exps_info->type) && is_st_arithmetic(t_info->type);
 
     switch (operation_tok) {
         case TOKEN_PLUS:
+        case TOKEN_MINUS:
             if (is_arithmetic) {
-                // If one of the operands is not a float, implicitly convert it.
-                if (t_type == SYMBOL_TYPE_FLOATING_POINT) {
-                    *exps_type = SYMBOL_TYPE_FLOATING_POINT;
+                // If any of the operands is a floating point.
+                if (exps_info->type == SYMBOL_TYPE_FLOATING_POINT ||
+                        t_info->type == SYMBOL_TYPE_FLOATING_POINT) {
+                    // Make sure we convert the other one to floating point as well.
+                    if (exps_info->type != SYMBOL_TYPE_FLOATING_POINT)
+                        codegen_convert_to_floating_point(exps_info);
+                    else
+                        codegen_convert_to_floating_point(t_info);
                 }
             } else {
                 return SEMANTIC_ERROR_TYPE_MISMATCH;
             }
 
             break;
-        case TOKEN_MINUS:
-            if (is_arithmetic) {
-                // If one of the operands is not a float, implicitly convert it.
-                if (t_type == SYMBOL_TYPE_FLOATING_POINT) {
-                    *exps_type = SYMBOL_TYPE_FLOATING_POINT;
-                }
-            } else {
-                return SEMANTIC_ERROR_TYPE_MISMATCH;
-            }
-            break;
         case TOKEN_LOGICAL_OR:
-            if (*exps_type != SYMBOL_TYPE_LOGIC ||
-                t_type != SYMBOL_TYPE_LOGIC) {
+            if (exps_info->type != SYMBOL_TYPE_LOGIC ||
+                t_info->type != SYMBOL_TYPE_LOGIC) {
                 return SEMANTIC_ERROR_TYPE_MISMATCH;
             }
             break;
@@ -796,10 +792,7 @@ syntatic_f(struct syntatic_ctx *ctx, struct codegen_value_info *f_info)
         case TOKEN_CONSTANT: {
             MATCH_OR_ERROR(ctx, TOKEN_CONSTANT);
             semantic_apply_sr18(&f_info->type, ctx->last_entry.constant_type);
-
-            struct codegen_value_info info;
-            codegen_add_tmp(f_info->type, ctx->last_entry.lexeme.buffer, &info);
-
+            codegen_add_tmp(f_info->type, ctx->last_entry.lexeme.buffer, f_info);
             break;
         }
         case TOKEN_IDENTIFIER: {
@@ -911,7 +904,9 @@ syntatic_exps(struct syntatic_ctx *ctx, struct codegen_value_info *exps_info)
             return -1;
 
         HANDLE_SEMANTIC_RESULT(
-            ctx, semantic_apply_sr25(tok, &exps_info->type, t_info.type));
+            ctx, semantic_apply_sr25(tok, exps_info, &t_info));
+
+        //codegen_
 
         tok = ctx->entry->token;
     }
