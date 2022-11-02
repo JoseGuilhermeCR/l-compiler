@@ -735,7 +735,7 @@ syntatic_is_first_of_f(struct syntatic_ctx *ctx)
 }
 
 static int
-syntatic_exp(struct syntatic_ctx *ctx, enum symbol_type *type);
+syntatic_exp(struct syntatic_ctx *ctx, struct codegen_value_info *info);
 
 static int
 syntatic_f(struct syntatic_ctx *ctx, struct codegen_value_info *f_info)
@@ -760,32 +760,38 @@ syntatic_f(struct syntatic_ctx *ctx, struct codegen_value_info *f_info)
             codegen_negate_f(f_info);
             break;
         case TOKEN_OPENING_PAREN: {
-            enum symbol_type exp_type = SYMBOL_TYPE_NONE;
+            struct codegen_value_info exp_info;
+            memset(&exp_info, 0, sizeof(exp_info));
+
             MATCH_OR_ERROR(ctx, TOKEN_OPENING_PAREN);
-            if (syntatic_exp(ctx, &exp_type) < 0)
+            if (syntatic_exp(ctx, &exp_info) < 0)
                 return -1;
-            semantic_apply_sr15(&f_info->type, exp_type);
+            semantic_apply_sr15(&f_info->type, exp_info.type);
             MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);
             break;
         }
         case TOKEN_INT: {
-            enum symbol_type exp_type = SYMBOL_TYPE_NONE;
+            struct codegen_value_info exp_info;
+            memset(&exp_info, 0, sizeof(exp_info));
+
             MATCH_OR_ERROR(ctx, TOKEN_INT);
             MATCH_OR_ERROR(ctx, TOKEN_OPENING_PAREN);
-            if (syntatic_exp(ctx, &exp_type) < 0)
+            if (syntatic_exp(ctx, &exp_info) < 0)
                 return -1;
-            HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr12(exp_type));
+            HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr12(exp_info.type));
             MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);
             semantic_apply_sr16(&f_info->type);
             break;
         }
         case TOKEN_FLOAT: {
-            enum symbol_type exp_type = SYMBOL_TYPE_NONE;
+            struct codegen_value_info exp_info;
+            memset(&exp_info, 0, sizeof(exp_info));
+
             MATCH_OR_ERROR(ctx, TOKEN_FLOAT);
             MATCH_OR_ERROR(ctx, TOKEN_OPENING_PAREN);
-            if (syntatic_exp(ctx, &exp_type) < 0)
+            if (syntatic_exp(ctx, &exp_info) < 0)
                 return -1;
-            HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr13(exp_type));
+            HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr13(exp_info.type));
             MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);
             semantic_apply_sr17(&f_info->type);
             break;
@@ -820,14 +826,26 @@ syntatic_f(struct syntatic_ctx *ctx, struct codegen_value_info *f_info)
                 if (semantic_apply_sr6(id_entry) < 0)
                     return -1;
 
-                enum symbol_type exp_type;
-                if (syntatic_exp(ctx, &exp_type) < 0)
+                struct codegen_value_info exp_info;
+                memset(&exp_info, 0, sizeof(exp_info));
+                if (syntatic_exp(ctx, &exp_info) < 0)
                     return -1;
-                HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr7(exp_type));
+                HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr7(exp_info.type));
                 MATCH_OR_ERROR(ctx, TOKEN_CLOSING_SQUARE_BRACKET);
             }
 
             semantic_apply_sr19(&f_info->type, id_entry, had_brackets);
+
+            if (had_brackets) {
+                // TODO(José): Dependent on expressions.
+                f_info->type = SYMBOL_TYPE_CHAR;
+            } else {
+                f_info->address = id_entry->address;
+                f_info->section = id_entry->symbol_section;
+                f_info->type = id_entry->symbol_type;
+                f_info->size = id_entry->size;
+            }
+
             break;
         }
         default:
@@ -838,7 +856,7 @@ syntatic_f(struct syntatic_ctx *ctx, struct codegen_value_info *f_info)
 }
 
 static int
-syntatic_t(struct syntatic_ctx *ctx, enum symbol_type *t_type)
+syntatic_t(struct syntatic_ctx *ctx, struct codegen_value_info *t_info)
 {
     struct codegen_value_info f_info;
     memset(&f_info, 0, sizeof(f_info));
@@ -846,7 +864,7 @@ syntatic_t(struct syntatic_ctx *ctx, enum symbol_type *t_type)
     if (syntatic_f(ctx, &f_info) < 0)
         return -1;
 
-    semantic_apply_sr23(t_type, f_info.type);
+    semantic_apply_sr23(&t_info->type, f_info.type);
 
     enum token tok = ctx->entry->token;
     while (tok == TOKEN_TIMES || tok == TOKEN_LOGICAL_AND || tok == TOKEN_MOD ||
@@ -857,8 +875,8 @@ syntatic_t(struct syntatic_ctx *ctx, enum symbol_type *t_type)
         if (syntatic_f(ctx, &f_info) < 0)
             return -1;
 
-        HANDLE_SEMANTIC_RESULT(ctx,
-                               semantic_apply_sr24(tok, t_type, f_info.type));
+        HANDLE_SEMANTIC_RESULT(
+            ctx, semantic_apply_sr24(tok, &t_info->type, f_info.type));
 
         tok = ctx->entry->token;
     }
@@ -867,7 +885,7 @@ syntatic_t(struct syntatic_ctx *ctx, enum symbol_type *t_type)
 }
 
 static int
-syntatic_exps(struct syntatic_ctx *ctx, enum symbol_type *exps_type)
+syntatic_exps(struct syntatic_ctx *ctx, struct codegen_value_info *exps_info)
 {
     uint8_t had_signal = 0;
 
@@ -877,23 +895,25 @@ syntatic_exps(struct syntatic_ctx *ctx, enum symbol_type *exps_type)
         had_signal = 1;
     }
 
-    enum symbol_type t_type = SYMBOL_TYPE_NONE;
-    if (syntatic_t(ctx, &t_type) < 0)
+    struct codegen_value_info t_info;
+    memset(&t_info, 0, sizeof(t_info));
+
+    if (syntatic_t(ctx, &t_info) < 0)
         return -1;
 
-    HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr21(t_type, had_signal));
+    HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr21(t_info.type, had_signal));
 
-    semantic_apply_sr22(exps_type, t_type);
+    semantic_apply_sr22(&exps_info->type, t_info.type);
 
     tok = ctx->entry->token;
     while (tok == TOKEN_PLUS || tok == TOKEN_MINUS || tok == TOKEN_LOGICAL_OR) {
         MATCH_OR_ERROR(ctx, tok);
 
-        if (syntatic_t(ctx, &t_type) < 0)
+        if (syntatic_t(ctx, &t_info) < 0)
             return -1;
 
-        HANDLE_SEMANTIC_RESULT(ctx,
-                               semantic_apply_sr25(tok, exps_type, t_type));
+        HANDLE_SEMANTIC_RESULT(
+            ctx, semantic_apply_sr25(tok, &exps_info->type, t_info.type));
 
         tok = ctx->entry->token;
     }
@@ -902,13 +922,15 @@ syntatic_exps(struct syntatic_ctx *ctx, enum symbol_type *exps_type)
 }
 
 static int
-syntatic_exp(struct syntatic_ctx *ctx, enum symbol_type *exp_type)
+syntatic_exp(struct syntatic_ctx *ctx, struct codegen_value_info *exp_info)
 {
-    enum symbol_type exps_type = SYMBOL_TYPE_NONE;
-    if (syntatic_exps(ctx, &exps_type) < 0)
+    struct codegen_value_info exps_info;
+    memset(&exps_info, 0, sizeof(exps_info));
+
+    if (syntatic_exps(ctx, &exps_info) < 0)
         return -1;
 
-    semantic_apply_sr20(exp_type, exps_type);
+    semantic_apply_sr20(&exp_info->type, exps_info.type);
 
     switch (ctx->entry->token) {
         case TOKEN_EQUAL:
@@ -919,10 +941,12 @@ syntatic_exp(struct syntatic_ctx *ctx, enum symbol_type *exp_type)
         case TOKEN_GREATER_EQUAL: {
             enum token operation_tok = ctx->entry->token;
             MATCH_OR_ERROR(ctx, ctx->entry->token);
-            if (syntatic_exps(ctx, &exps_type) < 0)
+            if (syntatic_exps(ctx, &exps_info) < 0)
                 return -1;
-            HANDLE_SEMANTIC_RESULT(
-                ctx, semantic_apply_sr26(operation_tok, exp_type, exps_type));
+            HANDLE_SEMANTIC_RESULT(ctx,
+                                   semantic_apply_sr26(operation_tok,
+                                                       &exp_info->type,
+                                                       exps_info.type));
             break;
         }
         default:
@@ -935,16 +959,17 @@ syntatic_exp(struct syntatic_ctx *ctx, enum symbol_type *exp_type)
 static int
 syntatic_write(struct syntatic_ctx *ctx)
 {
-    enum symbol_type type = SYMBOL_TYPE_NONE;
+    struct codegen_value_info exp_info;
+    memset(&exp_info, 0, sizeof(exp_info));
 
     MATCH_OR_ERROR(ctx, ctx->entry->token);
 
     MATCH_OR_ERROR(ctx, TOKEN_OPENING_PAREN);
-    if (syntatic_exp(ctx, &type) < 0)
+    if (syntatic_exp(ctx, &exp_info) < 0)
         return -1;
     while (ctx->entry->token == TOKEN_COMMA) {
         MATCH_OR_ERROR(ctx, TOKEN_COMMA);
-        if (syntatic_exp(ctx, &type) < 0)
+        if (syntatic_exp(ctx, &exp_info) < 0)
             return -1;
     }
 
@@ -956,7 +981,8 @@ syntatic_write(struct syntatic_ctx *ctx)
 static int
 syntatic_attr(struct syntatic_ctx *ctx)
 {
-    enum symbol_type type = SYMBOL_TYPE_NONE;
+    struct codegen_value_info exp_info;
+    memset(&exp_info, 0, sizeof(exp_info));
 
     MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
 
@@ -973,15 +999,15 @@ syntatic_attr(struct syntatic_ctx *ctx)
 
         HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr6(id_entry));
 
-        if (syntatic_exp(ctx, &type) < 0)
+        if (syntatic_exp(ctx, &exp_info) < 0)
             return -1;
         MATCH_OR_ERROR(ctx, TOKEN_CLOSING_SQUARE_BRACKET);
     }
 
     MATCH_OR_ERROR(ctx, TOKEN_ASSIGNMENT);
-    if (syntatic_exp(ctx, &type) < 0)
+    if (syntatic_exp(ctx, &exp_info) < 0)
         return -1;
-    HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr9(id_entry, type));
+    HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr9(id_entry, exp_info.type));
     MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
     return 0;
 }
@@ -989,11 +1015,13 @@ syntatic_attr(struct syntatic_ctx *ctx)
 static int
 syntatic_paren_exp(struct syntatic_ctx *ctx)
 {
-    enum symbol_type exp_type = SYMBOL_TYPE_NONE;
+    struct codegen_value_info exp_info;
+    memset(&exp_info, 0, sizeof(exp_info));
+
     MATCH_OR_ERROR(ctx, TOKEN_OPENING_PAREN);
-    if (syntatic_exp(ctx, &exp_type) < 0)
+    if (syntatic_exp(ctx, &exp_info) < 0)
         return -1;
-    HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr11(exp_type));
+    HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr11(exp_info.type));
     MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);
     return 0;
 }
