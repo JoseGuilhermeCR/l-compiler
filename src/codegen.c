@@ -917,3 +917,146 @@ codegen_move_to_id_entry(struct symbol *id_entry,
             UNREACHABLE();
     }
 }
+
+static void
+write_string(const struct codegen_value_info *exp)
+{
+    // FIXME: Think about a better way to deal with different
+    // string sizes. Currently size is fixed at 256 bytes and
+    // we are counting on the fact that the string *is* NULL terminated
+    // correctly.
+    const char *label = label_from_section(exp->section);
+    fprintf(file,
+            "\t; write_string\n"
+            "\tmov rsi, %s + %lu\n"
+            "\tmov rdx, %lu\n",
+            label,
+            exp->address,
+            exp->size);
+}
+
+static void
+write_char(const struct codegen_value_info *exp)
+{
+    const char *label = label_from_section(exp->section);
+    fprintf(file,
+            "\t; write_char\n"
+            "\tmov rsi, %s + %lu\n"
+            "\tmov rdx, 1\n",
+            label,
+            exp->address);
+}
+
+static void
+write_logic(const struct codegen_value_info *exp)
+{
+}
+
+static void
+write_integer(const struct codegen_value_info *exp)
+{
+    const char *exp_label = label_from_section(exp->section);
+    const uint64_t tmp_address =
+        get_next_address(&current_bss_tmp_address, 1024);
+
+    char jge_label[16];
+    get_next_label(jge_label, sizeof(jge_label));
+
+    char loop_beg_label[16];
+    get_next_label(loop_beg_label, sizeof(loop_beg_label));
+
+    char loop_1_beg_label[16];
+    get_next_label(loop_1_beg_label, sizeof(loop_1_beg_label));
+
+    fprintf(file,
+            "\t; write_integer\n"
+            // Number we will convert.
+            "\tmov eax, [%s + %lu]\n"
+            // String destination.
+            "\tmov edi, TMP + %lu\n"
+            // Stack counter.
+            "\tmov ecx, 0\n"
+            // Size of converted string.
+            "\tmov esi, 0\n"
+            // Check if we need to place the - sign.
+            "\tcmp eax, 0\n"
+            "\tjge %s\n"
+            // We do need!
+            "\tmov bl, '-'\n"
+            "\tmov [edi], bl\n"
+            "\tadd edi, 1\n"
+            "\tadd esi, 1\n"
+            "\tneg eax\n"
+            // Actually convert the number.
+            "%s:\n"
+            "\tmov ebx, 10\n"
+            // Divide and push the rest into the stack
+            // until the result is non zero.
+            "%s:\n"
+            "\tadd ecx, 1\n"
+            "\tcdq\n"
+            "\tidiv ebx\n"
+            "\tpush dx\n"
+            "\tcmp eax, 0\n"
+            "\tjne %s\n"
+            // Total length of string.
+            // Our stack counter + original length.
+            "\tadd esi, ecx\n"
+            // Now we pop every element into the string buffer.
+            "%s:\n"
+            "\tpop dx\n"
+            "\tadd dl, '0'\n"
+            "\tmov [edi], dl\n"
+            "\tadd edi, 1\n"
+            "\tsub ecx, 1\n"
+            "\tcmp ecx, 0\n"
+            "\tjne %s\n"
+            // Place '\0' in the end.
+            "\tmov dl, 0\n"
+            "\tmov [edi], dl\n"
+            // Write syscall arguments:
+            // esi - buffer address.
+            // edx - size.
+            "\tmov esi, TMP + %lu\n"
+            "\tmov edx, edi\n",
+            exp_label,
+            exp->address,
+            tmp_address,
+            jge_label,
+            jge_label,
+            loop_beg_label,
+            loop_beg_label,
+            loop_1_beg_label,
+            loop_1_beg_label,
+            tmp_address);
+}
+
+void
+codegen_write(const struct codegen_value_info *exp)
+{
+    fputs("\n\tsection .text ; codegen_write\n", file);
+
+    switch (exp->type) {
+        case SYMBOL_TYPE_FLOATING_POINT:
+            break;
+        case SYMBOL_TYPE_INTEGER:
+            write_integer(exp);
+            break;
+        case SYMBOL_TYPE_STRING:
+            write_string(exp);
+            break;
+        case SYMBOL_TYPE_CHAR:
+            write_char(exp);
+            break;
+        case SYMBOL_TYPE_LOGIC:
+            write_logic(exp);
+            break;
+        default:
+            UNREACHABLE();
+    }
+
+    fputs("\tmov rax, 1\n"
+          "\tmov rdi, 1\n"
+          "\tsyscall\n",
+          file);
+}

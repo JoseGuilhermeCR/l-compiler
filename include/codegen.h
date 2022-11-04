@@ -90,4 +90,7 @@ void
 codegen_move_to_id_entry(struct symbol *id_entry,
                          const struct codegen_value_info *exp);
 
+void
+codegen_write(const struct codegen_value_info *exp);
+
 #endif
