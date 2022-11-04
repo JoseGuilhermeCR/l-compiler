@@ -1012,11 +1012,13 @@ syntatic_write(struct syntatic_ctx *ctx)
         return -1;
 
     codegen_write(&exp_info);
+    codegen_reset_tmp();
 
     while (ctx->entry->token == TOKEN_COMMA) {
         MATCH_OR_ERROR(ctx, TOKEN_COMMA);
         if (syntatic_exp(ctx, &exp_info) < 0)
             return -1;
+        codegen_reset_tmp();
         codegen_write(&exp_info);
     }
 

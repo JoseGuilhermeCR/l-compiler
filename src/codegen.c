@@ -950,6 +950,42 @@ write_char(const struct codegen_value_info *exp)
 static void
 write_logic(const struct codegen_value_info *exp)
 {
+    const char *exp_label = label_from_section(exp->section);
+    const uint64_t tmp_address =
+        get_next_address(&current_bss_tmp_address, 1024);
+
+    char jne_label[16];
+    get_next_label(jne_label, sizeof(jne_label));
+
+    char jmp_label[16];
+    get_next_label(jmp_label, sizeof(jmp_label));
+
+    fprintf(file,
+            "\t ; write_logic\n"
+            "\tmov eax, [%s + %lu]\n"
+            "\tcmp eax, 0\n"
+            "\tjne %s\n"
+            "\tmov rax, \"false\"\n"
+            "\tmov [TMP + %lu], rax\n"
+            "\tmov rsi, TMP + %lu\n"
+            "\tmov rdx, 5\n"
+            "\tjmp %s\n"
+            "%s:\n"
+            "\tmov rax, \"true\"\n"
+            "\tmov [TMP + %lu], rax\n"
+            "\tmov rsi, TMP + %lu\n"
+            "\tmov rdx, 5\n"
+            "%s:\n",
+            exp_label,
+            exp->address,
+            jne_label,
+            tmp_address,
+            tmp_address,
+            jmp_label,
+            jne_label,
+            tmp_address,
+            tmp_address,
+            jmp_label);
 }
 
 static void
@@ -972,7 +1008,7 @@ write_integer(const struct codegen_value_info *exp)
             "\t; write_integer\n"
             // Number we will convert.
             "\tmov eax, [%s + %lu]\n"
-            // String destination.
+            // String destination buffer.
             "\tmov edi, TMP + %lu\n"
             // Stack counter.
             "\tmov ecx, 0\n"
@@ -1029,6 +1065,41 @@ write_integer(const struct codegen_value_info *exp)
             loop_1_beg_label,
             loop_1_beg_label,
             tmp_address);
+}
+
+static void
+write_float(const struct codegen_value_info *exp)
+{
+    const char *exp_label = label_from_section(exp->section);
+    const uint64_t tmp_address =
+        get_next_address(&current_bss_tmp_address, 1024);
+
+    char jae_label[16];
+    get_next_label(jae_label, sizeof(jae_label));
+
+    //    fprintf(file,
+    //            "\t; write_float\n"
+    //            // Number we will convert.
+    //            "\tmovss xmm0, [%s + %lu]\n"
+    //            // String destination buffer.
+    //            "\tmov edi, TMP + %lu\n"
+    //            // Stack counter.
+    //            "\tmov ecx, 0\n"
+    //            // Set the divisor.
+    //            "\tmov rbx, 10\n"
+    //            "\tcvtsi2ss xmm2, rbx\n"
+    //            // Check if we need to place the - sign.
+    //            "\tsubss xmm1, xmm1\n"
+    //            "\tcomiss xmm0, xmm1\n"
+    //            "\tjae %s\n"
+    //            "\tmov bl, '-'\n"
+    //            "\tmov [edi], bl\n"
+    //            "\tmov
+    //            ,
+    //            exp_label, exp->address,
+    //            tmp_address,
+    //            jae_label,
+    //           );
 }
 
 void
