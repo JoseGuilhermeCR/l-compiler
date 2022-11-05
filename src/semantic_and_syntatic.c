@@ -1111,6 +1111,7 @@ syntatic_command(struct syntatic_ctx *ctx)
 
     switch (tok) {
         case TOKEN_SEMICOLON:
+            MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
             break;
         case TOKEN_WRITE:
         case TOKEN_WRITELN:
