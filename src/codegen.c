@@ -1050,11 +1050,10 @@ write_integer(const struct codegen_value_info *exp)
             // Place '\0' in the end.
             "\tmov dl, 0\n"
             "\tmov [edi], dl\n"
-            // Write syscall arguments:
-            // esi - buffer address.
-            // edx - size.
-            "\tmov esi, TMP + %lu\n"
-            "\tmov edx, edi\n",
+            // Size from esi to edx for syscall.
+            // esi receives buffer adress.
+            "\tmov edx, esi\n"
+            "\tmov esi, TMP + %lu\n",
             exp_label,
             exp->address,
             tmp_address,
