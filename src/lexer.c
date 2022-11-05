@@ -76,10 +76,16 @@ lexer_get_next_token(struct lexer *lexer, struct lexical_entry *entry)
     entry->line = 1;
 
     lexer->state = LEXER_STATE_INITIAL;
-    while (lexer->cursor != lexer->file->size) {
-        const char c = lexer->file->buffer[lexer->cursor++];
 
-        if (c == '\n') {
+    char last;
+    char c;
+
+    while (lexer->cursor != lexer->file->size) {
+
+        last = c;
+        c = lexer->file->buffer[lexer->cursor++];
+
+        if (last == '\n') {
             entry->line = lexer->line;
             ++lexer->line;
         }
@@ -178,8 +184,10 @@ lexer_get_next_token(struct lexer *lexer, struct lexical_entry *entry)
                     case '.':
                         lexer->state = LEXER_STATE_START_FLOAT;
                         break;
+                    default:
+                        lexer->error = LEXER_ERROR_INVALID_LEXEME;
+                        return LEXER_RESULT_ERROR;
                 }
-
                 break;
             case LEXER_STATE_KEYWORD_OR_IDENTIFIER:
                 if (isalnum(c) || c == '_') {
@@ -483,11 +491,9 @@ get_lexeme_from_token(enum token token)
             return ">=";
         case TOKEN_DIVISION:
             return "/";
+        default:
+            UNREACHABLE();
     }
 
-    // Tokens that may have more than
-    // one lexeme never should've gotten
-    // here.
-    UNREACHABLE();
     return "NULL";
 }
