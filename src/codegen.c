@@ -921,18 +921,34 @@ codegen_move_to_id_entry(struct symbol *id_entry,
 static void
 write_string(const struct codegen_value_info *exp)
 {
-    // FIXME: Think about a better way to deal with different
-    // string sizes. Currently size is fixed at 256 bytes and
-    // we are counting on the fact that the string *is* NULL terminated
-    // correctly.
+    const uint64_t tmp_address = get_next_address(&current_bss_tmp_address, 1024);
+
     const char *label = label_from_section(exp->section);
+
+    char loop_label[16];
+    get_next_label(loop_label, sizeof(loop_label));
+
     fprintf(file,
             "\t; write_string\n"
-            "\tmov rsi, %s + %lu\n"
-            "\tmov rdx, %lu\n",
+            "\tmov esi, %s + %lu\n"
+            "\tmov edi, TMP + %lu\n"
+            "%s:\n"
+            "\tmov al, [esi]\n"
+            "\tmov [edi], al\n"
+            "\tadd esi, 1\n"
+            "\tadd edi, 1\n"
+            "\tcmp al, 0\n"
+            "\tjne %s\n"
+            "\tmov esi, TMP + %lu\n"
+            "\tmov edx, edi\n"
+            "\tsub edx, esi\n"
+            "\tsub edx, 1\n",
             label,
             exp->address,
-            exp->size);
+            tmp_address,
+            loop_label,
+            loop_label,
+            tmp_address);
 }
 
 static void
