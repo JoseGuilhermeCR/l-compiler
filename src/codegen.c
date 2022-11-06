@@ -938,13 +938,26 @@ write_string(const struct codegen_value_info *exp)
 static void
 write_char(const struct codegen_value_info *exp)
 {
+    const uint64_t tmp_address = get_next_address(&current_bss_tmp_address, 1024);
+
     const char *label = label_from_section(exp->section);
     fprintf(file,
             "\t; write_char\n"
-            "\tmov rsi, %s + %lu\n"
-            "\tmov rdx, 1\n",
+            // Recover char from memory.
+            "\tmov al, [%s + %lu]\n"
+            // Place it followed by a \0 in the temporary area.
+            "\tmov esi, TMP + %lu\n"
+            "\tmov [esi], al\n"
+            "\tadd esi, 1\n"
+            "\tmov al, 0\n"
+            "\tmov [esi], al\n"
+            // Address of buffer and size for syscall.
+            "\tmov esi, TMP + %lu\n"
+            "\tmov edx, 1\n",
             label,
-            exp->address);
+            exp->address,
+            tmp_address,
+            tmp_address);
 }
 
 static void
