@@ -962,8 +962,8 @@ write_logic(const struct codegen_value_info *exp)
 
     fprintf(file,
             "\t ; write_logic\n"
-            "\tmov eax, [%s + %lu]\n"
-            "\tcmp eax, 0\n"
+            "\tmov rax, [%s + %lu]\n"
+            "\tcmp rax, 0\n"
             "\tjne %s\n"
             "\tmov rax, \"false\"\n"
             "\tmov [TMP + %lu], rax\n"
@@ -1076,29 +1076,110 @@ write_float(const struct codegen_value_info *exp)
     char jae_label[16];
     get_next_label(jae_label, sizeof(jae_label));
 
-    //    fprintf(file,
-    //            "\t; write_float\n"
-    //            // Number we will convert.
-    //            "\tmovss xmm0, [%s + %lu]\n"
-    //            // String destination buffer.
-    //            "\tmov edi, TMP + %lu\n"
-    //            // Stack counter.
-    //            "\tmov ecx, 0\n"
-    //            // Set the divisor.
-    //            "\tmov rbx, 10\n"
-    //            "\tcvtsi2ss xmm2, rbx\n"
-    //            // Check if we need to place the - sign.
-    //            "\tsubss xmm1, xmm1\n"
-    //            "\tcomiss xmm0, xmm1\n"
-    //            "\tjae %s\n"
-    //            "\tmov bl, '-'\n"
-    //            "\tmov [edi], bl\n"
-    //            "\tmov
-    //            ,
-    //            exp_label, exp->address,
-    //            tmp_address,
-    //            jae_label,
-    //           );
+    char int_conversion_beg_label[16];
+    get_next_label(int_conversion_beg_label, sizeof(int_conversion_beg_label));
+
+    char int_string_put_label[16];
+    get_next_label(int_string_put_label, sizeof(int_string_put_label));
+
+    char print_label[16];
+    get_next_label(print_label, sizeof(print_label));
+
+    char float_conversion_beg_label[16];
+    get_next_label(float_conversion_beg_label,
+                   sizeof(float_conversion_beg_label));
+
+    fprintf(file,
+            "\t; write_float\n"
+            // Number we will convert.
+            "\tmovss xmm0, [%s + %lu]\n"
+            // String destination buffer.
+            "\tmov edi, TMP + %lu\n"
+            // Stack counter.
+            "\tmov ecx, 0\n"
+            // Precision of 6 digits (shared between integer and fraction).
+            "\tmov esi, 6\n"
+            // Set the divisor.
+            "\tmov ebx, 10\n"
+            "\tcvtsi2ss xmm2, ebx\n"
+            // Check if we need to place the - sign.
+            "\tsubss xmm1, xmm1\n"
+            "\tcomiss xmm0, xmm1\n"
+            "\tjae %s\n"
+            "\tmov bl, '-'\n"
+            "\tmov [edi], bl\n"
+            "\tadd edi, 1\n"
+            // Also negate the value.
+            "\tmov edx, -1\n"
+            "\tcvtsi2ss xmm1, edx\n"
+            "\tmulss xmm0, xmm1\n"
+            "%s:\n"
+            // Place the integer into xmm1 and leave the fraction in xmm0.
+            "\troundss xmm1, xmm0, 0b0011\n"
+            "\tsubss xmm0, xmm1\n"
+            // Convert integer
+            "\tcvtss2si eax, xmm1\n"
+            "%s:\n"
+            "\tadd ecx, 1\n"
+            "\tcdq\n"
+            "\tidiv ebx\n"
+            "\tpush dx\n"
+            "\tcmp eax, 0\n"
+            "\tjne %s\n"
+            // Calculate the precision (digits we still have to write).
+            "\tsub esi, ecx\n"
+            // Place integer into buffer.
+            "%s:\n"
+            "\tpop dx\n"
+            "\tadd dl, '0'\n"
+            "\tmov [edi], dl\n"
+            "\tadd edi, 1\n"
+            "\tsub ecx, 1\n"
+            "\tcmp ecx, 0\n"
+            "\tjne %s\n"
+            // Place decimal point.
+            "\tmov dl, '.'\n"
+            "\tmov [edi], dl\n"
+            "\tadd edi, 1\n"
+            // Check if we still have precision to convert the fraction.
+            "%s:\n"
+            "\tcmp esi, 0\n"
+            "\tjle %s\n"
+            // Multiply the fraction by ten so we can get the next digit.
+            "\tmulss xmm0, xmm2\n"
+            "\troundss xmm1, xmm0, 0b0011\n"
+            // Update xmm0 so that it has only fraction.
+            "\tsubss xmm0, xmm1\n"
+            // Converted digit in edx.
+            "\tcvtss2si edx, xmm1\n"
+            "\tadd dl, '0'\n"
+            "\tmov [edi], dl\n"
+            "\tadd edi, 1\n"
+            "\tsub esi, 1\n"
+            "\tjmp %s\n"
+            "%s:\n"
+            // Place NULL terminator.
+            "\tmov dl, 0\n"
+            "\tmov [edi], dl\n"
+            // Beginning of buffer in esi for syscall.
+            "\tmov esi, TMP + %lu\n"
+            // Calculate size of converted string.
+            "\tsub edi, esi\n"
+            "\tmov edx, edi\n",
+            exp_label,
+            exp->address,
+            tmp_address,
+            jae_label,
+            jae_label,
+            int_conversion_beg_label,
+            int_conversion_beg_label,
+            int_string_put_label,
+            int_string_put_label,
+            float_conversion_beg_label,
+            print_label,
+            float_conversion_beg_label,
+            print_label,
+            tmp_address);
 }
 
 void
@@ -1108,6 +1189,7 @@ codegen_write(const struct codegen_value_info *exp)
 
     switch (exp->type) {
         case SYMBOL_TYPE_FLOATING_POINT:
+            write_float(exp);
             break;
         case SYMBOL_TYPE_INTEGER:
             write_integer(exp);
@@ -1125,8 +1207,8 @@ codegen_write(const struct codegen_value_info *exp)
             UNREACHABLE();
     }
 
-    fputs("\tmov rax, 1\n"
-          "\tmov rdi, 1\n"
+    fputs("\tmov eax, 1\n"
+          "\tmov edi, 1\n"
           "\tsyscall\n",
           file);
 }
