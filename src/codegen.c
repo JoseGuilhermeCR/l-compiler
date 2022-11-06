@@ -321,6 +321,33 @@ codegen_logic_negate(struct codegen_value_info *f)
 }
 
 void
+codegen_convert_to_integer(struct codegen_value_info *info)
+{
+    assert(info->type == SYMBOL_TYPE_FLOATING_POINT);
+
+    const uint64_t original_address = info->address;
+    const char *label = label_from_section(info->section);
+
+    // Update value information.
+    info->section = SYMBOL_SECTION_NONE;
+    info->type = SYMBOL_TYPE_INTEGER;
+    info->address = get_next_address(&current_bss_tmp_address, info->size);
+
+    // We definitely want to truncate here and the right instruction
+    // would be cvttss2si (the extra t is for truncation).
+    // Since I can't use it, I'm gonna round the number before converting... :(
+    fprintf(file,
+            "\n\tsection .text ; codegen_convert_to_integer.\n"
+            "\tmovss xmm0, [%s + %lu]\n"
+            "\troundss xmm0, xmm0, 0b0011\n"
+            "\tcvtss2si eax, xmm0\n"
+            "\tmov [TMP + %lu], eax\n",
+            label,
+            original_address,
+            info->address);
+}
+
+void
 codegen_convert_to_floating_point(struct codegen_value_info *info)
 {
     assert(info->type == SYMBOL_TYPE_INTEGER);

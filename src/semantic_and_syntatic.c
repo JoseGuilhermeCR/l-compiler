@@ -308,15 +308,9 @@ semantic_apply_sr17(enum symbol_type *type)
 }
 
 static void
-semantic_apply_sr16(enum symbol_type *type)
+semantic_apply_sr16(struct codegen_value_info *f_info)
 {
-    *type = SYMBOL_TYPE_INTEGER;
-}
-
-static void
-semantic_apply_sr15(enum symbol_type *f_type, enum symbol_type exp_type)
-{
-    *f_type = exp_type;
+    codegen_convert_to_integer(f_info);
 }
 
 static enum semantic_result
@@ -773,29 +767,23 @@ syntatic_f(struct syntatic_ctx *ctx, struct codegen_value_info *f_info)
             break;
         }
         case TOKEN_INT: {
-            struct codegen_value_info exp_info;
-            memset(&exp_info, 0, sizeof(exp_info));
-
             MATCH_OR_ERROR(ctx, TOKEN_INT);
             MATCH_OR_ERROR(ctx, TOKEN_OPENING_PAREN);
-            if (syntatic_exp(ctx, &exp_info) < 0)
+            if (syntatic_exp(ctx, f_info) < 0)
                 return -1;
-            HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr12(exp_info.type));
+            HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr12(f_info->type));
             MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);
-            semantic_apply_sr16(&f_info->type);
+            codegen_convert_to_integer(f_info);
             break;
         }
         case TOKEN_FLOAT: {
-            struct codegen_value_info exp_info;
-            memset(&exp_info, 0, sizeof(exp_info));
-
             MATCH_OR_ERROR(ctx, TOKEN_FLOAT);
             MATCH_OR_ERROR(ctx, TOKEN_OPENING_PAREN);
-            if (syntatic_exp(ctx, &exp_info) < 0)
+            if (syntatic_exp(ctx, f_info) < 0)
                 return -1;
-            HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr13(exp_info.type));
+            HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr13(f_info->type));
             MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);
-            semantic_apply_sr17(&f_info->type);
+            codegen_convert_to_floating_point(f_info);
             break;
         }
         case TOKEN_CONSTANT: {

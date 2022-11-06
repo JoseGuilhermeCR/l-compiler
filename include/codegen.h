@@ -47,6 +47,9 @@ void
 codegen_convert_to_floating_point(struct codegen_value_info *info);
 
 void
+codegen_convert_to_integer(struct codegen_value_info *info);
+
+void
 codegen_perform_addition(struct codegen_value_info *exps_info,
                          const struct codegen_value_info *t_info);
 
