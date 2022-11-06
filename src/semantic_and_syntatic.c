@@ -1007,19 +1007,20 @@ syntatic_write(struct syntatic_ctx *ctx)
 
     MATCH_OR_ERROR(ctx, ctx->entry->token);
 
+    const uint8_t needs_new_line = ctx->last_entry.token == TOKEN_WRITELN;
+
     MATCH_OR_ERROR(ctx, TOKEN_OPENING_PAREN);
     if (syntatic_exp(ctx, &exp_info) < 0)
         return -1;
 
-    codegen_write(&exp_info);
-    codegen_reset_tmp();
+    codegen_write(&exp_info, needs_new_line);
 
     while (ctx->entry->token == TOKEN_COMMA) {
         MATCH_OR_ERROR(ctx, TOKEN_COMMA);
         if (syntatic_exp(ctx, &exp_info) < 0)
             return -1;
         codegen_reset_tmp();
-        codegen_write(&exp_info);
+        codegen_write(&exp_info, needs_new_line);
     }
 
     MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);

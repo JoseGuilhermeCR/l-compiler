@@ -921,7 +921,8 @@ codegen_move_to_id_entry(struct symbol *id_entry,
 static void
 write_string(const struct codegen_value_info *exp)
 {
-    const uint64_t tmp_address = get_next_address(&current_bss_tmp_address, 1024);
+    const uint64_t tmp_address =
+        get_next_address(&current_bss_tmp_address, 1024);
 
     const char *label = label_from_section(exp->section);
 
@@ -954,7 +955,8 @@ write_string(const struct codegen_value_info *exp)
 static void
 write_char(const struct codegen_value_info *exp)
 {
-    const uint64_t tmp_address = get_next_address(&current_bss_tmp_address, 1024);
+    const uint64_t tmp_address =
+        get_next_address(&current_bss_tmp_address, 1024);
 
     const char *label = label_from_section(exp->section);
     fprintf(file,
@@ -1212,7 +1214,7 @@ write_float(const struct codegen_value_info *exp)
 }
 
 void
-codegen_write(const struct codegen_value_info *exp)
+codegen_write(const struct codegen_value_info *exp, uint8_t needs_new_line)
 {
     fputs("\n\tsection .text ; codegen_write\n", file);
 
@@ -1234,6 +1236,19 @@ codegen_write(const struct codegen_value_info *exp)
             break;
         default:
             UNREACHABLE();
+    }
+
+    if (needs_new_line) {
+        // Append a \n to the buffer.
+        fputs("\tmov eax, esi\n"
+              "\tadd eax, edx\n"
+              "\tmov bl, 0x0A\n"
+              "\tmov [eax], bl\n"
+              "\tadd eax, 1\n"
+              "\tmov bl, 0\n"
+              "\tmov [eax], bl\n"
+              "\tadd edx, 1\n",
+              file);
     }
 
     fputs("\tmov eax, 1\n"
