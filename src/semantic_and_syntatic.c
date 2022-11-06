@@ -301,18 +301,6 @@ semantic_apply_sr18(enum symbol_type *type, enum constant_type const_type)
     }
 }
 
-static void
-semantic_apply_sr17(enum symbol_type *type)
-{
-    *type = SYMBOL_TYPE_FLOATING_POINT;
-}
-
-static void
-semantic_apply_sr16(struct codegen_value_info *f_info)
-{
-    codegen_convert_to_integer(f_info);
-}
-
 static enum semantic_result
 semantic_apply_sr14(enum symbol_type type)
 {
@@ -610,8 +598,7 @@ syntatic_decl_var(struct syntatic_ctx *ctx, enum token type_tok)
             id_entry = ctx->last_entry.symbol_table_entry;
             is_new_identifier = ctx->last_entry.is_new_identifier;
 
-            if (semantic_apply_sr4(is_new_identifier) < 0)
-                return -1;
+            HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr4(is_new_identifier));
 
             semantic_apply_sr1(id_entry, type_tok);
 
@@ -800,16 +787,15 @@ syntatic_f(struct syntatic_ctx *ctx, struct codegen_value_info *f_info)
 
             struct symbol *id_entry = ctx->last_entry.symbol_table_entry;
 
-            if (semantic_apply_sr8(ctx->last_entry.is_new_identifier) < 0)
-                return -1;
+            HANDLE_SEMANTIC_RESULT(
+                ctx, semantic_apply_sr8(ctx->last_entry.is_new_identifier));
 
             if (ctx->entry->token == TOKEN_OPENING_SQUARE_BRACKET) {
                 MATCH_OR_ERROR(ctx, TOKEN_OPENING_SQUARE_BRACKET);
 
                 had_brackets = 1;
 
-                if (semantic_apply_sr6(id_entry) < 0)
-                    return -1;
+                HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr6(id_entry));
 
                 struct codegen_value_info exp_info;
                 memset(&exp_info, 0, sizeof(exp_info));
@@ -1027,11 +1013,10 @@ syntatic_attr(struct syntatic_ctx *ctx)
 
     struct symbol *id_entry = ctx->last_entry.symbol_table_entry;
 
-    if (semantic_apply_sr8(ctx->last_entry.is_new_identifier) < 0)
-        return -1;
+    HANDLE_SEMANTIC_RESULT(
+        ctx, semantic_apply_sr8(ctx->last_entry.is_new_identifier));
 
-    if (semantic_apply_sr10(id_entry) < 0)
-        return -1;
+    HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr10(id_entry));
 
     if (ctx->entry->token == TOKEN_OPENING_SQUARE_BRACKET) {
         MATCH_OR_ERROR(ctx, TOKEN_OPENING_SQUARE_BRACKET);
