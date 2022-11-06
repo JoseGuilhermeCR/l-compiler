@@ -41,9 +41,9 @@ get_next_address(uint64_t *address, uint64_t size)
     uint64_t not_aligned_by = 0;
     if (mod)
         not_aligned_by = size - mod;
-    const uint64_t tmp = *address + not_aligned_by;
-    *address += size;
-    return tmp;
+    const uint64_t aligned_address = *address + not_aligned_by;
+    *address = aligned_address + size;
+    return aligned_address;
 }
 
 static uint64_t
