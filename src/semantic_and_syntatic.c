@@ -766,13 +766,9 @@ syntatic_f(struct syntatic_ctx *ctx, struct codegen_value_info *f_info)
             codegen_logic_negate(f_info);
             break;
         case TOKEN_OPENING_PAREN: {
-            struct codegen_value_info exp_info;
-            memset(&exp_info, 0, sizeof(exp_info));
-
             MATCH_OR_ERROR(ctx, TOKEN_OPENING_PAREN);
-            if (syntatic_exp(ctx, &exp_info) < 0)
+            if (syntatic_exp(ctx, f_info) < 0)
                 return -1;
-            semantic_apply_sr15(&f_info->type, exp_info.type);
             MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);
             break;
         }

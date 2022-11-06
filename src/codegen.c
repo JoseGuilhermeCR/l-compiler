@@ -1240,7 +1240,8 @@ codegen_write(const struct codegen_value_info *exp, uint8_t needs_new_line)
 
     if (needs_new_line) {
         // Append a \n to the buffer.
-        fputs("\tmov eax, esi\n"
+        fputs("\t; Appending \\n to the buffer.\n"
+              "\tmov eax, esi\n"
               "\tadd eax, edx\n"
               "\tmov bl, 0x0A\n"
               "\tmov [eax], bl\n"
