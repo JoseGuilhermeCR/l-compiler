@@ -94,6 +94,16 @@ codegen_move_to_id_entry(struct symbol *id_entry,
                          const struct codegen_value_info *exp);
 
 void
+codegen_move_to_id_entry_idx(struct symbol *id_entry,
+                             const struct codegen_value_info *exp,
+                             const struct codegen_value_info *idx_expr_info);
+
+void
 codegen_write(const struct codegen_value_info *exp, uint8_t needs_new_line);
+
+void
+codegen_move_idx_to_tmp(const struct symbol *id_entry,
+                        const struct codegen_value_info *idx_expr_info,
+                        struct codegen_value_info *f_info);
 
 #endif

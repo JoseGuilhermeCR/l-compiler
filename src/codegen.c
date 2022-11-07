@@ -945,6 +945,34 @@ codegen_move_to_id_entry(struct symbol *id_entry,
     }
 }
 
+void
+codegen_move_to_id_entry_idx(struct symbol *id_entry,
+                             const struct codegen_value_info *exp,
+                             const struct codegen_value_info *idx_expr_info)
+{
+    assert(id_entry->symbol_type == SYMBOL_TYPE_STRING);
+    assert(exp->type == SYMBOL_TYPE_CHAR);
+    assert(idx_expr_info->type == SYMBOL_TYPE_INTEGER);
+
+    const char *id_label = label_from_section(id_entry->symbol_section);
+    const char *exp_label = label_from_section(exp->section);
+    const char *idx_expr_info_label =
+        label_from_section(idx_expr_info->section);
+
+    fprintf(file,
+            "\n\tsection .text ; codegen_move_to_id_entry_idx.\n"
+            "\tmov eax, [%s + %lu]\n"
+            "\tadd eax, %s + %lu\n"
+            "\tmov bl, [%s + %lu]\n"
+            "\tmov [eax], bl\n",
+            idx_expr_info_label,
+            idx_expr_info->address,
+            id_label,
+            id_entry->address,
+            exp_label,
+            exp->address);
+}
+
 static void
 write_string(const struct codegen_value_info *exp)
 {
@@ -1283,4 +1311,34 @@ codegen_write(const struct codegen_value_info *exp, uint8_t needs_new_line)
           "\tmov edi, 1\n"
           "\tsyscall\n",
           file);
+}
+
+void
+codegen_move_idx_to_tmp(const struct symbol *id_entry,
+                        const struct codegen_value_info *idx_expr_info,
+                        struct codegen_value_info *f_info)
+{
+    assert(id_entry->symbol_type == SYMBOL_TYPE_STRING);
+    assert(idx_expr_info->type == SYMBOL_TYPE_INTEGER);
+
+    f_info->type = SYMBOL_TYPE_CHAR;
+    f_info->size = size_from_type(f_info->type);
+    f_info->address = get_next_address(&current_bss_tmp_address, f_info->size);
+    f_info->section = SYMBOL_SECTION_NONE;
+
+    const char *idx_expr_info_label =
+        label_from_section(idx_expr_info->section);
+    const char *id_entry_label = label_from_section(id_entry->symbol_section);
+
+    fprintf(file,
+            "\n\tsection .text ; codegen_move_idx_to_tmp.\n"
+            "\tmov eax, [%s + %lu]\n"
+            "\tadd eax, %s + %lu\n"
+            "\tmov bl, [eax]\n"
+            "\tmov [TMP + %lu], bl\n",
+            idx_expr_info_label,
+            idx_expr_info->address,
+            id_entry_label,
+            id_entry->address,
+            f_info->address);
 }

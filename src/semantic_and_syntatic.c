@@ -272,14 +272,6 @@ semantic_apply_sr20(enum symbol_type *exp_type, enum symbol_type exps_type)
 }
 
 static void
-semantic_apply_sr19(enum symbol_type *type,
-                    struct symbol *symbol,
-                    uint8_t had_brackets)
-{
-    *type = had_brackets ? SYMBOL_TYPE_CHAR : symbol->symbol_type;
-}
-
-static void
 semantic_apply_sr18(enum symbol_type *type, enum constant_type const_type)
 {
     switch (const_type) {
@@ -345,12 +337,19 @@ semantic_apply_sr10(struct symbol *symbol)
 }
 
 static enum semantic_result
-semantic_apply_sr9(struct symbol *id_entry, enum symbol_type exp_type)
+semantic_apply_sr9(struct symbol *id_entry,
+                   enum symbol_type exp_type,
+                   uint8_t had_brackets)
 {
     assert(id_entry &&
            "A NULL symbol means this was probably not an IDENTIFIER.");
-    if (id_entry->symbol_type != exp_type)
+
+    if (!had_brackets && id_entry->symbol_type != exp_type)
         return SEMANTIC_ERROR_TYPE_MISMATCH;
+
+    if (had_brackets && exp_type != SYMBOL_TYPE_CHAR)
+        return SEMANTIC_ERROR_TYPE_MISMATCH;
+
     return SEMANTIC_OK;
 }
 
@@ -790,6 +789,7 @@ syntatic_f(struct syntatic_ctx *ctx, struct codegen_value_info *f_info)
             HANDLE_SEMANTIC_RESULT(
                 ctx, semantic_apply_sr8(ctx->last_entry.is_new_identifier));
 
+            struct codegen_value_info brackets_inner_expr;
             if (ctx->entry->token == TOKEN_OPENING_SQUARE_BRACKET) {
                 MATCH_OR_ERROR(ctx, TOKEN_OPENING_SQUARE_BRACKET);
 
@@ -797,26 +797,22 @@ syntatic_f(struct syntatic_ctx *ctx, struct codegen_value_info *f_info)
 
                 HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr6(id_entry));
 
-                struct codegen_value_info exp_info;
-                memset(&exp_info, 0, sizeof(exp_info));
-                if (syntatic_exp(ctx, &exp_info) < 0)
+                memset(&brackets_inner_expr, 0, sizeof(brackets_inner_expr));
+                if (syntatic_exp(ctx, &brackets_inner_expr) < 0)
                     return -1;
-                HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr7(exp_info.type));
+                HANDLE_SEMANTIC_RESULT(
+                    ctx, semantic_apply_sr7(brackets_inner_expr.type));
                 MATCH_OR_ERROR(ctx, TOKEN_CLOSING_SQUARE_BRACKET);
             }
 
-            semantic_apply_sr19(&f_info->type, id_entry, had_brackets);
-
-            if (had_brackets) {
-                // TODO(José): Dependent on expressions.
-                f_info->type = SYMBOL_TYPE_CHAR;
-            } else {
+            if (!had_brackets) {
                 f_info->address = id_entry->address;
                 f_info->section = id_entry->symbol_section;
                 f_info->type = id_entry->symbol_type;
                 f_info->size = id_entry->size;
+            } else {
+                codegen_move_idx_to_tmp(id_entry, &brackets_inner_expr, f_info);
             }
-
             break;
         }
         default:
@@ -1006,9 +1002,6 @@ syntatic_attr(struct syntatic_ctx *ctx)
 {
     codegen_reset_tmp();
 
-    struct codegen_value_info exp_info;
-    memset(&exp_info, 0, sizeof(exp_info));
-
     MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
 
     struct symbol *id_entry = ctx->last_entry.symbol_table_entry;
@@ -1018,24 +1011,39 @@ syntatic_attr(struct syntatic_ctx *ctx)
 
     HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr10(id_entry));
 
+    uint8_t had_brackets = 0;
+    struct codegen_value_info brackets_inner_expr;
+    memset(&brackets_inner_expr, 0, sizeof(brackets_inner_expr));
+
     if (ctx->entry->token == TOKEN_OPENING_SQUARE_BRACKET) {
+        had_brackets = 1;
         MATCH_OR_ERROR(ctx, TOKEN_OPENING_SQUARE_BRACKET);
 
         HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr6(id_entry));
 
-        if (syntatic_exp(ctx, &exp_info) < 0)
+        if (syntatic_exp(ctx, &brackets_inner_expr) < 0)
             return -1;
+        HANDLE_SEMANTIC_RESULT(ctx,
+                               semantic_apply_sr7(brackets_inner_expr.type));
         MATCH_OR_ERROR(ctx, TOKEN_CLOSING_SQUARE_BRACKET);
     }
+
+    struct codegen_value_info exp_info;
+    memset(&exp_info, 0, sizeof(exp_info));
 
     MATCH_OR_ERROR(ctx, TOKEN_ASSIGNMENT);
     if (syntatic_exp(ctx, &exp_info) < 0)
         return -1;
-    HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr9(id_entry, exp_info.type));
+
+    HANDLE_SEMANTIC_RESULT(
+        ctx, semantic_apply_sr9(id_entry, exp_info.type, had_brackets));
     MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
 
     // TODO(Jose): Handle brackets assignment.
-    codegen_move_to_id_entry(id_entry, &exp_info);
+    if (!had_brackets)
+        codegen_move_to_id_entry(id_entry, &exp_info);
+    else
+        codegen_move_to_id_entry_idx(id_entry, &exp_info, &brackets_inner_expr);
 
     return 0;
 }
