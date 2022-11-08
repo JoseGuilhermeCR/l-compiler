@@ -977,7 +977,7 @@ static void
 write_string(const struct codegen_value_info *exp)
 {
     const uint64_t tmp_address =
-        get_next_address(&current_bss_tmp_address, 1024);
+        get_next_address(&current_bss_tmp_address, 257);
 
     const char *label = label_from_section(exp->section);
 
@@ -1011,7 +1011,7 @@ static void
 write_char(const struct codegen_value_info *exp)
 {
     const uint64_t tmp_address =
-        get_next_address(&current_bss_tmp_address, 1024);
+        get_next_address(&current_bss_tmp_address, 4);
 
     const char *label = label_from_section(exp->section);
     fprintf(file,
@@ -1038,7 +1038,7 @@ write_logic(const struct codegen_value_info *exp)
 {
     const char *exp_label = label_from_section(exp->section);
     const uint64_t tmp_address =
-        get_next_address(&current_bss_tmp_address, 1024);
+        get_next_address(&current_bss_tmp_address, 8);
 
     char jne_label[16];
     get_next_label(jne_label, sizeof(jne_label));
@@ -1079,7 +1079,7 @@ write_integer(const struct codegen_value_info *exp)
 {
     const char *exp_label = label_from_section(exp->section);
     const uint64_t tmp_address =
-        get_next_address(&current_bss_tmp_address, 1024);
+        get_next_address(&current_bss_tmp_address, 32);
 
     char jge_label[16];
     get_next_label(jge_label, sizeof(jge_label));
@@ -1157,7 +1157,7 @@ write_float(const struct codegen_value_info *exp)
 {
     const char *exp_label = label_from_section(exp->section);
     const uint64_t tmp_address =
-        get_next_address(&current_bss_tmp_address, 1024);
+        get_next_address(&current_bss_tmp_address, 32);
 
     char jae_label[16];
     get_next_label(jae_label, sizeof(jae_label));

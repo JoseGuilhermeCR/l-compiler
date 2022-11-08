@@ -1000,8 +1000,6 @@ syntatic_write(struct syntatic_ctx *ctx)
 static int
 syntatic_attr(struct syntatic_ctx *ctx)
 {
-    codegen_reset_tmp();
-
     MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
 
     struct symbol *id_entry = ctx->last_entry.symbol_table_entry;
@@ -1089,6 +1087,8 @@ static int
 syntatic_command(struct syntatic_ctx *ctx)
 {
     enum token tok = ctx->entry->token;
+
+    codegen_reset_tmp();
 
     switch (tok) {
         case TOKEN_SEMICOLON:
