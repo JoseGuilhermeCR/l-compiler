@@ -115,4 +115,16 @@ codegen_eval_loop_expr(const struct codegen_value_info *exp);
 void
 codegen_finish_loop(void);
 
+void
+codegen_start_if(const struct codegen_value_info *exp);
+
+void
+codegen_if_jmp(void);
+
+void
+codegen_start_else(void);
+
+void
+codegen_finish_if(uint8_t had_else);
+
 #endif

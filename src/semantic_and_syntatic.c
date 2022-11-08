@@ -1168,16 +1168,25 @@ syntatic_if(struct syntatic_ctx *ctx)
     if (syntatic_paren_exp(ctx, &exp) < 0)
         return -1;
 
+    codegen_start_if(&exp);
+
     if (syntatic_is_first_of_command(ctx)) {
         if (syntatic_command(ctx) < 0)
             return -1;
 
+        uint8_t had_else = 0;
         if (ctx->entry->token == TOKEN_ELSE) {
+            had_else = 1;
+
+            codegen_if_jmp();
+            codegen_start_else();
+
             MATCH_OR_ERROR(ctx, TOKEN_ELSE);
             if (syntatic_command(ctx) < 0)
                 return -1;
         }
 
+        codegen_finish_if(had_else);
         return 0;
     } else if (ctx->entry->token == TOKEN_OPENING_CURLY_BRACKET) {
         MATCH_OR_ERROR(ctx, TOKEN_OPENING_CURLY_BRACKET);
@@ -1189,7 +1198,13 @@ syntatic_if(struct syntatic_ctx *ctx)
 
         MATCH_OR_ERROR(ctx, TOKEN_CLOSING_CURLY_BRACKET);
 
+        uint8_t had_else = 0;
         if (ctx->entry->token == TOKEN_ELSE) {
+            had_else = 1;
+
+            codegen_if_jmp();
+            codegen_start_else();
+
             MATCH_OR_ERROR(ctx, TOKEN_ELSE);
             MATCH_OR_ERROR(ctx, TOKEN_OPENING_CURLY_BRACKET);
 
@@ -1201,6 +1216,7 @@ syntatic_if(struct syntatic_ctx *ctx)
             MATCH_OR_ERROR(ctx, TOKEN_CLOSING_CURLY_BRACKET);
         }
 
+        codegen_finish_if(had_else);
         return 0;
     }
 

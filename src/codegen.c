@@ -1010,8 +1010,7 @@ write_string(const struct codegen_value_info *exp)
 static void
 write_char(const struct codegen_value_info *exp)
 {
-    const uint64_t tmp_address =
-        get_next_address(&current_bss_tmp_address, 4);
+    const uint64_t tmp_address = get_next_address(&current_bss_tmp_address, 4);
 
     const char *label = label_from_section(exp->section);
     fprintf(file,
@@ -1037,8 +1036,7 @@ static void
 write_logic(const struct codegen_value_info *exp)
 {
     const char *exp_label = label_from_section(exp->section);
-    const uint64_t tmp_address =
-        get_next_address(&current_bss_tmp_address, 8);
+    const uint64_t tmp_address = get_next_address(&current_bss_tmp_address, 8);
 
     char jne_label[16];
     get_next_label(jne_label, sizeof(jne_label));
@@ -1078,8 +1076,7 @@ static void
 write_integer(const struct codegen_value_info *exp)
 {
     const char *exp_label = label_from_section(exp->section);
-    const uint64_t tmp_address =
-        get_next_address(&current_bss_tmp_address, 32);
+    const uint64_t tmp_address = get_next_address(&current_bss_tmp_address, 32);
 
     char jge_label[16];
     get_next_label(jge_label, sizeof(jge_label));
@@ -1156,8 +1153,7 @@ static void
 write_float(const struct codegen_value_info *exp)
 {
     const char *exp_label = label_from_section(exp->section);
-    const uint64_t tmp_address =
-        get_next_address(&current_bss_tmp_address, 32);
+    const uint64_t tmp_address = get_next_address(&current_bss_tmp_address, 32);
 
     char jae_label[16];
     get_next_label(jae_label, sizeof(jae_label));
@@ -1384,4 +1380,54 @@ codegen_finish_loop(void)
             "%s:\n",
             while_loop_start_label,
             while_loop_end_label);
+}
+
+static char if_end_label[16];
+static char if_false_label[16];
+
+void
+codegen_start_if(const struct codegen_value_info *exp)
+{
+    assert(exp->type == SYMBOL_TYPE_LOGIC);
+
+    const char *exp_label = label_from_section(exp->section);
+
+    get_next_label(if_end_label, sizeof(if_end_label));
+    get_next_label(if_false_label, sizeof(if_false_label));
+
+    fprintf(file,
+            "\n\tsection .text ; codegen_start_if.\n"
+            "\tmov al, [%s + %lu]\n"
+            "\tcmp al, 0\n"
+            "\tje %s\n",
+            exp_label,
+            exp->address,
+            if_false_label);
+}
+
+void
+codegen_if_jmp(void)
+{
+    fprintf(file,
+            "\n\tsection .text ; codegen_if_jmp.\n"
+            "\tjmp %s\n",
+            if_end_label);
+}
+
+void
+codegen_start_else(void)
+{
+    fprintf(file,
+            "\n\tsection .text ; codegen_start_else.\n"
+            "%s:\n",
+            if_false_label);
+}
+
+void
+codegen_finish_if(uint8_t had_else)
+{
+    fprintf(file,
+            "\n\tsection .text ; codegen_finish_if.\n"
+            "%s:\n",
+            had_else ? if_end_label : if_false_label);
 }
