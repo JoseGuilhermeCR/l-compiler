@@ -106,4 +106,13 @@ codegen_move_idx_to_tmp(const struct symbol *id_entry,
                         const struct codegen_value_info *idx_expr_info,
                         struct codegen_value_info *f_info);
 
+void
+codegen_start_loop(void);
+
+void
+codegen_eval_loop_expr(const struct codegen_value_info *exp);
+
+void
+codegen_finish_loop(void);
+
 #endif

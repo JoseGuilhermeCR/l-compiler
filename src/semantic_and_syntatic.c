@@ -1049,15 +1049,15 @@ syntatic_attr(struct syntatic_ctx *ctx)
 }
 
 static int
-syntatic_paren_exp(struct syntatic_ctx *ctx)
+syntatic_paren_exp(struct syntatic_ctx *ctx,
+                   struct codegen_value_info *exp_info)
 {
-    struct codegen_value_info exp_info;
-    memset(&exp_info, 0, sizeof(exp_info));
+    memset(exp_info, 0, sizeof(*exp_info));
 
     MATCH_OR_ERROR(ctx, TOKEN_OPENING_PAREN);
-    if (syntatic_exp(ctx, &exp_info) < 0)
+    if (syntatic_exp(ctx, exp_info) < 0)
         return -1;
-    HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr11(exp_info.type));
+    HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr11(exp_info->type));
     MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);
     return 0;
 }
@@ -1125,14 +1125,21 @@ syntatic_command(struct syntatic_ctx *ctx)
 static int
 syntatic_while(struct syntatic_ctx *ctx)
 {
+    struct codegen_value_info exp;
+
     MATCH_OR_ERROR(ctx, TOKEN_WHILE);
 
-    if (syntatic_paren_exp(ctx) < 0)
+    codegen_start_loop();
+
+    if (syntatic_paren_exp(ctx, &exp) < 0)
         return -1;
+
+    codegen_eval_loop_expr(&exp);
 
     if (syntatic_is_first_of_command(ctx)) {
         if (syntatic_command(ctx) < 0)
             return -1;
+        codegen_finish_loop();
         return 0;
     } else if (ctx->entry->token == TOKEN_OPENING_CURLY_BRACKET) {
         MATCH_OR_ERROR(ctx, TOKEN_OPENING_CURLY_BRACKET);
@@ -1143,6 +1150,7 @@ syntatic_while(struct syntatic_ctx *ctx)
         }
 
         MATCH_OR_ERROR(ctx, TOKEN_CLOSING_CURLY_BRACKET);
+        codegen_finish_loop();
         return 0;
     }
 
@@ -1153,9 +1161,11 @@ syntatic_while(struct syntatic_ctx *ctx)
 static int
 syntatic_if(struct syntatic_ctx *ctx)
 {
+    struct codegen_value_info exp;
+
     MATCH_OR_ERROR(ctx, TOKEN_IF);
 
-    if (syntatic_paren_exp(ctx) < 0)
+    if (syntatic_paren_exp(ctx, &exp) < 0)
         return -1;
 
     if (syntatic_is_first_of_command(ctx)) {

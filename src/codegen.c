@@ -1342,3 +1342,46 @@ codegen_move_idx_to_tmp(const struct symbol *id_entry,
             id_entry->address,
             f_info->address);
 }
+
+static char while_loop_start_label[16];
+static char while_loop_end_label[16];
+
+void
+codegen_start_loop(void)
+{
+    get_next_label(while_loop_start_label, sizeof(while_loop_start_label));
+    get_next_label(while_loop_end_label, sizeof(while_loop_end_label));
+
+    fprintf(file,
+            "\n\tsection .text ; codegen_start_loop.\n"
+            "%s:\n",
+            while_loop_start_label);
+}
+
+void
+codegen_eval_loop_expr(const struct codegen_value_info *exp)
+{
+    assert(exp->type == SYMBOL_TYPE_LOGIC);
+
+    const char *exp_label = label_from_section(exp->section);
+
+    fprintf(file,
+            "\n\tsection .text ; codegen_eval_loop_expr.\n"
+            "\tmov al, [%s + %lu]\n"
+            "\tcmp al, 0\n"
+            "\tje %s\n",
+            exp_label,
+            exp->address,
+            while_loop_end_label);
+}
+
+void
+codegen_finish_loop(void)
+{
+    fprintf(file,
+            "\n\tsection .text ; codegen_finish_loop.\n"
+            "\tjmp %s\n"
+            "%s:\n",
+            while_loop_start_label,
+            while_loop_end_label);
+}
