@@ -127,4 +127,7 @@ codegen_start_else(void);
 void
 codegen_finish_if(uint8_t had_else);
 
+void
+codegen_read_into(struct symbol *id_entry);
+
 #endif

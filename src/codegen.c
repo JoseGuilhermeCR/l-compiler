@@ -1432,3 +1432,42 @@ codegen_finish_if(uint8_t had_else)
             "%s:\n",
             had_else ? if_end_label : if_false_label);
 }
+
+void
+codegen_read_into(struct symbol *id_entry)
+{
+    const uint32_t buffer_size = 257;
+    const uint64_t tmp_address =
+        get_next_address(&current_bss_address, buffer_size);
+
+    char je_label[16];
+    get_next_label(je_label, sizeof(je_label));
+
+    fprintf(
+        file,
+        "\n\tsection .text ; codegen_read_into.\n"
+        "\tmov eax, 0\n"
+        "\tmov edi, 0\n"
+        "\tmov esi, TMP + %lu\n"
+        "\tmov edx, %u\n"
+        "\tsyscall\n"
+        // Check if we've read something. If so, remove the trailing new line.
+        "\tcmp eax, 0\n"
+        "\tje %s\n"
+        "\tsub esi, 1\n"
+        "\tadd esi, eax\n"
+        "\tmov byte [esi], 0\n"
+        "%s:\n",
+        tmp_address,
+        buffer_size,
+        je_label,
+        je_label);
+
+    // Convert if needed...
+    struct codegen_value_info exp = { .address = tmp_address,
+                                      .section = SYMBOL_SECTION_NONE,
+                                      .size = 255,
+                                      .type = SYMBOL_TYPE_STRING };
+
+    codegen_move_to_id_entry(id_entry, &exp);
+}

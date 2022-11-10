@@ -693,11 +693,14 @@ syntatic_read(struct syntatic_ctx *ctx)
 
     MATCH_OR_ERROR(ctx, TOKEN_IDENTIFIER);
 
+    struct symbol *id_entry = ctx->last_entry.symbol_table_entry;
+
     HANDLE_SEMANTIC_RESULT(
         ctx, semantic_apply_sr8(ctx->last_entry.is_new_identifier));
 
-    HANDLE_SEMANTIC_RESULT(
-        ctx, semantic_apply_sr10(ctx->last_entry.symbol_table_entry));
+    HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr10(id_entry));
+
+    codegen_read_into(id_entry);
 
     MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);
     MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
