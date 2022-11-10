@@ -308,6 +308,7 @@ codegen_logic_negate(struct codegen_value_info *f)
 
     // Generate a new temporary address.
     f->address = get_next_address(&current_bss_tmp_address, f->size);
+    f->section = SYMBOL_SECTION_NONE;
 
     fprintf(file,
             "\n\tsection .text ; codegen_logic_negate.\n"
