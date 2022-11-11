@@ -1481,7 +1481,7 @@ uint64_t
 read_logic(uint64_t buffer_addr)
 {
     // For now, accepts false/true as input.
-    const uint64_t logic_addr = get_next_address(&current_bss_address, 1);
+    const uint64_t logic_addr = get_next_address(&current_bss_tmp_address, 1);
 
     char false_label[16];
     get_next_label(false_label, sizeof(false_label));
@@ -1525,12 +1525,87 @@ read_logic(uint64_t buffer_addr)
     return logic_addr;
 }
 
+uint64_t
+read_int(uint64_t buffer_addr)
+{
+    // FIXME:
+    // This assumes the first character might be a '-', but
+    // apart from that, we assume every character after that
+    // is a *valid* digit.
+
+    const uint64_t int_address = get_next_address(&current_bss_tmp_address, 4);
+
+    char loop_start[16];
+    get_next_label(loop_start, sizeof(loop_start));
+
+    char loop_end[16];
+    get_next_label(loop_end, sizeof(loop_end));
+
+    char no_signal_label[16];
+    get_next_label(no_signal_label, sizeof(no_signal_label));
+
+    char end_label[16];
+    get_next_label(end_label, sizeof(end_label));
+
+    fprintf(file,
+            "\t; read_int\n"
+            "\tmov eax, 0\n"
+            "\tmov ebx, 0\n"
+            "\tmov ecx, 10\n"
+            "\tmov dx, 1\n"
+            "\tmov esi, TMP + %lu\n"
+            // Take a look at the first character to verify if it's a '-'.
+            "\tmov bl, [esi]\n"
+            "\tcmp bl, \'-\'\n"
+            "\tjne %s\n"
+            // In case it is, store a -1 in the stack...
+            "\tmov dx, -1\n"
+            "\tadd esi, 1\n"
+            "\tmov bl, [esi]\n"
+            "%s:\n"
+            "\tpush dx\n"
+            "\tmov edx, 0\n"
+            "%s:\n"
+            "\tcmp bl, 0\n"
+            "\tje %s\n"
+            "\timul ecx\n"
+            // We have zeroed edx, if it's not zero after imul,
+            // it means an overflow happened.
+            "\tcmp edx, 0\n"
+            "\tjne INVALID_INPUT_HANDLER\n"
+            // Just keep normally.
+            "\tsub bl, \'0\'\n"
+            "\tadd eax, ebx\n"
+            "\tadd esi, 1\n"
+            "\tmov bl, [esi]\n"
+            "\tjmp %s\n"
+            "%s:\n"
+            "\tpop cx\n"
+            "\tcmp cx, 0\n"
+            "\tjg %s\n"
+            "\tneg eax\n"
+            "%s:\n"
+            "\tmov [TMP + %lu], eax\n",
+            buffer_addr,
+            no_signal_label,
+            no_signal_label,
+            loop_start,
+            loop_end,
+            loop_start,
+            loop_end,
+            end_label,
+            end_label,
+            int_address);
+
+    return int_address;
+}
+
 void
 codegen_read_into(struct symbol *id_entry)
 {
     const uint32_t buffer_size = 257;
     const uint64_t tmp_address =
-        get_next_address(&current_bss_address, buffer_size);
+        get_next_address(&current_bss_tmp_address, buffer_size);
 
     char je_label[16];
     get_next_label(je_label, sizeof(je_label));
@@ -1559,7 +1634,7 @@ codegen_read_into(struct symbol *id_entry)
 
     switch (id_entry->symbol_type) {
         case SYMBOL_TYPE_INTEGER:
-            // info.address = read_int();
+            info.address = read_int(tmp_address);
             break;
         case SYMBOL_TYPE_FLOATING_POINT:
             // info.address = read_float();
