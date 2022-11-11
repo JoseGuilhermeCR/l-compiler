@@ -92,6 +92,47 @@ dump_template(void)
 }
 
 static void
+add_error_handler(
+        const char *error_handler_name,
+        const char *error_message,
+        uint8_t exit_code)
+{
+    fprintf(file,
+            "\n\tsection .text\n"
+            "%s_HANDLER:\n"
+            // Write Syscall.
+            "\tmov rax, 1\n"
+            "\tmov rdi, 2\n"
+            "\tmov rsi, %s_MSG\n"
+            "\tmov rdx, %s_MSG_LEN\n"
+            "\tsyscall\n"
+            // Exit Syscall.
+            "\tmov rax, 60\n"
+            "\tmov rdi, %u\n"
+            "\tsyscall\n"
+            // Data for Error.
+            "\tsection .rodata\n"
+            "%s_MSG: db \"Error: %s\",0xA,0x0\n"
+            "%s_MSG_LEN: equ $-INVALID_INPUT_MSG\n"
+            ,
+            error_handler_name,
+            error_handler_name,
+            error_handler_name,
+            exit_code,
+            error_handler_name,
+            error_message,
+            error_handler_name
+           );
+}
+
+static void
+add_error_handlers(void)
+{
+    fputs("\n\t; Error Handlers\n", file);
+    add_error_handler("INVALID_INPUT", "Invalid Input. Exitting...", 1);
+}
+
+static void
 add_exit_syscall(uint8_t error_code)
 {
     fprintf(file,
@@ -121,6 +162,7 @@ codegen_dump(void)
         return;
 
     add_exit_syscall(0);
+    add_error_handlers();
     fflush(file);
 }
 
