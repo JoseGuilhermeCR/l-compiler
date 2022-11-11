@@ -97,6 +97,8 @@ add_error_handler(
         const char *error_message,
         uint8_t exit_code)
 {
+    assert(exit_code && "Zero exit code might mean success to the user.");
+
     fprintf(file,
             "\n\tsection .text\n"
             "%s_HANDLER:\n"
