@@ -13,9 +13,12 @@
 #define MAX_VALUE_SIZE 256
 
 /* FIXME's
- * Align the variables and constants in memory?
  * Use better instructions.
- * Separate constant data into .ro_data.
+ *
+ * Get rid of write and read. In a proper language we should have support
+ * for functions and be able to call the kernel natively or at least be able
+ * to embed some assembly to call it for us without relying on hard coded
+ * assembly on the code generator.
  * */
 
 static FILE *file;
@@ -92,10 +95,9 @@ dump_template(void)
 }
 
 static void
-add_error_handler(
-        const char *error_handler_name,
-        const char *error_message,
-        uint8_t exit_code)
+add_error_handler(const char *error_handler_name,
+                  const char *error_message,
+                  uint8_t exit_code)
 {
     assert(exit_code && "Zero exit code might mean success to the user.");
 
@@ -115,16 +117,14 @@ add_error_handler(
             // Data for Error.
             "\tsection .rodata\n"
             "%s_MSG: db \"Error: %s\",0xA,0x0\n"
-            "%s_MSG_LEN: equ $-INVALID_INPUT_MSG\n"
-            ,
+            "%s_MSG_LEN: equ $-INVALID_INPUT_MSG\n",
             error_handler_name,
             error_handler_name,
             error_handler_name,
             exit_code,
             error_handler_name,
             error_message,
-            error_handler_name
-           );
+            error_handler_name);
 }
 
 static void
@@ -1477,6 +1477,54 @@ codegen_finish_if(uint8_t had_else)
             had_else ? if_end_label : if_false_label);
 }
 
+uint64_t
+read_logic(uint64_t buffer_addr)
+{
+    // For now, accepts false/true as input.
+    const uint64_t logic_addr = get_next_address(&current_bss_address, 1);
+
+    char false_label[16];
+    get_next_label(false_label, sizeof(false_label));
+
+    char true_label[16];
+    get_next_label(true_label, sizeof(true_label));
+
+    char end_label[16];
+    get_next_label(end_label, sizeof(end_label));
+
+    fprintf(file,
+            "\t; read_logic\n"
+            "\tmov esi, TMP + %lu\n"
+            "\tmov rax, [esi]\n"
+            // Checks for false.
+            "\tmov rbx, \"false\"\n"
+            "\tcmp rax, rbx\n"
+            "\tje %s\n"
+            // Checks for true.
+            "\tmov rbx, \"true\"\n"
+            "\tcmp rax, rbx\n"
+            "\tje %s\n"
+            "\tjmp INVALID_INPUT_HANDLER\n"
+            "%s:\n"
+            "\tmov byte [TMP + %lu], 0\n"
+            "\tjmp %s\n"
+            "%s:\n"
+            "\tmov byte [TMP + %lu], 1\n"
+            "%s:\n",
+
+            buffer_addr,
+            false_label,
+            true_label,
+            false_label,
+            logic_addr,
+            end_label,
+            true_label,
+            logic_addr,
+            end_label);
+
+    return logic_addr;
+}
+
 void
 codegen_read_into(struct symbol *id_entry)
 {
@@ -1507,11 +1555,29 @@ codegen_read_into(struct symbol *id_entry)
         je_label,
         je_label);
 
-    // Convert if needed...
-    struct codegen_value_info exp = { .address = tmp_address,
-                                      .section = SYMBOL_SECTION_NONE,
-                                      .size = 255,
-                                      .type = SYMBOL_TYPE_STRING };
+    struct codegen_value_info info;
 
-    codegen_move_to_id_entry(id_entry, &exp);
+    switch (id_entry->symbol_type) {
+        case SYMBOL_TYPE_INTEGER:
+            // info.address = read_int();
+            break;
+        case SYMBOL_TYPE_FLOATING_POINT:
+            // info.address = read_float();
+            break;
+        case SYMBOL_TYPE_LOGIC:
+            info.address = read_logic(tmp_address);
+            break;
+        case SYMBOL_TYPE_CHAR:
+        case SYMBOL_TYPE_STRING:
+            info.address = tmp_address;
+            break;
+        default:
+            UNREACHABLE();
+    }
+
+    info.type = id_entry->symbol_type;
+    info.size = size_from_type(info.type);
+    info.section = SYMBOL_SECTION_NONE;
+
+    codegen_move_to_id_entry(id_entry, &info);
 }
