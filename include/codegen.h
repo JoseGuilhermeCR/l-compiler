@@ -16,8 +16,8 @@ struct codegen_value_info
 int
 codegen_init(void);
 
-void
-codegen_dump(const char *pathname);
+int
+codegen_dump(const char *pathname, uint8_t delete_unoptimized);
 
 void
 codegen_destroy(void);

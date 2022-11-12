@@ -21,7 +21,8 @@
  * assembly on the code generator.
  * */
 
-static FILE *file;
+static FILE *tmp_file;
+static char template_filename[] = "XXXXXX.asm";
 
 static uint64_t current_bss_tmp_address;
 static uint64_t current_data_address;
@@ -74,8 +75,8 @@ dump_template(void)
     struct tm tm;
     localtime_r(&now, &tm);
 
-    fprintf(file,
-            "; Generated on %04u/%02u/%02u - %02u:%02u\n"
+    fprintf(tmp_file,
+            "\t; Generated on %04u/%02u/%02u - %02u:%02u\n"
             "\tglobal _start\n"
             "\tsection .bss\n"
             "TMP:\n"
@@ -101,7 +102,7 @@ add_error_handler(const char *error_handler_name,
 {
     assert(exit_code && "Zero exit code might mean success to the user.");
 
-    fprintf(file,
+    fprintf(tmp_file,
             "\tsection .text\n"
             "%s_HANDLER:\n"
             // Write Syscall.
@@ -130,14 +131,14 @@ add_error_handler(const char *error_handler_name,
 static void
 add_error_handlers(void)
 {
-    fputs("\n\t; Error Handlers\n", file);
+    fputs("\t; Error Handlers\n", tmp_file);
     add_error_handler("INVALID_INPUT", "Invalid Input. Exitting...", 1);
 }
 
 static void
 add_exit_syscall(uint8_t error_code)
 {
-    fprintf(file,
+    fprintf(tmp_file,
             "\tsection .text\n"
             "\t; add_exit_syscall.\n"
             "\tmov rax, 60\n"
@@ -149,13 +150,12 @@ add_exit_syscall(uint8_t error_code)
 int
 codegen_init(void)
 {
-    char template_filename[] = "l-XXXXXX.asm";
     const int fd = mkstemps(template_filename, 4);
     if (fd < 0)
         return -1;
 
-    file = fdopen(fd, "w+");
-    if (!file)
+    tmp_file = fdopen(fd, "w+");
+    if (!tmp_file)
         return -1;
 
     dump_template();
@@ -163,12 +163,8 @@ codegen_init(void)
 }
 
 static void
-dump_to_file(FILE *dump_file)
+remove_unnecessary_section_commands(FILE *file, FILE *dump_file)
 {
-    // Apart from copying the assembly output from the temporary file
-    // to the normal file, this function also removes lines containing
-    // "section" that are unnecesary.
-
     enum section
     {
         TEXT,
@@ -210,34 +206,211 @@ dump_to_file(FILE *dump_file)
         if (!unnecesary_line)
             fputs(line_buffer, dump_file);
     }
+
+    fflush(dump_file);
 }
 
-void
-codegen_dump(const char *pathname)
+static void
+perform_peephole(FILE *file, FILE *dump_file)
 {
-    if (!file)
-        return;
+    // A very naive implementation in which we look for consecutive loads and
+    // stores and remove those instructions that have no impact in execution.
+    fseek(file, 0, SEEK_SET);
 
-    FILE *dump_file = fopen(pathname, "w+");
-    if (!dump_file)
-        return;
+    enum
+    {
+        WAITING_FIRST_MOV,
+        WAITING_SECOND_MOV,
+    } state = WAITING_FIRST_MOV;
+
+    char line[512];
+    char tmp_line[512];
+    char store_mem_dst[32];
+    char store_reg_src[32];
+    char load_mem_src[32];
+    char load_reg_dst[32];
+
+    uint32_t avoided_moves = 0;
+
+    while (fgets(line, sizeof(line), file)) {
+        switch (state) {
+            case WAITING_FIRST_MOV:
+                if (strncmp(line, "\tmov", 4) != 0) {
+                    fputs(line, dump_file);
+                } else {
+                    fputs(line, dump_file);
+
+                    const uint8_t is_store = strstr(line, "],") != NULL;
+                    if (is_store) {
+                        strtok(line, "[");
+                        const char *ptr = strtok(NULL, "[");
+
+                        char *mem_dst = store_mem_dst;
+                        while (*ptr != ']')
+                            *mem_dst++ = *ptr++;
+                        *mem_dst = 0;
+
+                        // Skip ",] ".
+                        ptr += 3;
+
+                        char *reg_src = store_reg_src;
+                        while (*ptr != '\n')
+                            *reg_src++ = *ptr++;
+                        *reg_src = 0;
+
+                        state = WAITING_SECOND_MOV;
+                    }
+                }
+                break;
+            case WAITING_SECOND_MOV:
+                if (strncmp(line, "\tmov", 4) == 0) {
+                    const uint8_t is_load = strstr(line, ", [") != NULL;
+                    if (is_load) {
+                        strncpy(tmp_line, line, sizeof(line));
+
+                        strtok(tmp_line, " ");
+                        const char *ptr = strtok(NULL, " ");
+
+                        char *load_dst = load_reg_dst;
+                        while (*ptr != ',')
+                            *load_dst++ = *ptr++;
+                        *load_dst = 0;
+
+                        // Skip ", [".
+                        ptr += 3;
+
+                        char *mem_src = load_mem_src;
+                        while (*ptr != ']')
+                            *mem_src++ = *ptr++;
+                        *mem_src = 0;
+
+                        if (strcmp(load_mem_src, store_mem_dst) == 0 &&
+                            strcmp(load_reg_dst, store_reg_src) == 0) {
+                            ++avoided_moves;
+                        } else {
+                            fputs(line, dump_file);
+                        }
+                    } else {
+                        fputs(line, dump_file);
+                    }
+                } else {
+                    uint8_t instruction_line = 1;
+
+                    if (strncmp(line, "\tsection", 8) == 0) {
+                        instruction_line = 0;
+                    } else if (strncmp(line, "\t;", 2) == 0) {
+                        instruction_line = 0;
+                    } else if (strncmp(line, "\talign", 6) == 0) {
+                        instruction_line = 0;
+                    } else if (strncmp(line, "\talignb", 7) == 0) {
+                        instruction_line = 0;
+                    } else if (strncmp(line, "\tdb", 3) == 0) {
+                        instruction_line = 0;
+                    } else if (strncmp(line, "\tdd", 3) == 0) {
+                        instruction_line = 0;
+                    } else if (strncmp(line, "\ttimes", 6) == 0) {
+                        instruction_line = 0;
+                    } else if (strncmp(line, "\tresb", 5) == 0) {
+                        instruction_line = 0;
+                    } else if (line[0] != '\t') {
+                        // LABEL.
+                        instruction_line = 0;
+                    }
+
+                    fputs(line, dump_file);
+                    if (instruction_line) {
+                        state = WAITING_FIRST_MOV;
+                    }
+                }
+                break;
+        }
+    }
+
+    fprintf(ERR_STREAM, "Peephole avoided moves: %u.\n", avoided_moves);
+}
+
+int
+codegen_dump(const char *pathname, uint8_t delete_unoptimized)
+{
+    if (!tmp_file)
+        return -1;
+
+    int err = 0;
 
     add_exit_syscall(0);
     add_error_handlers();
-    fflush(file);
+    fflush(tmp_file);
 
-    dump_to_file(dump_file);
-    fclose(dump_file);
+    char remove_section_filename[256];
+    char peephole_filename[256];
+
+    snprintf(remove_section_filename,
+             sizeof(remove_section_filename),
+             "%s-removed-sections-%s",
+             pathname,
+             template_filename);
+    snprintf(peephole_filename,
+             sizeof(peephole_filename),
+             "%s-peephole-%s",
+             pathname,
+             template_filename);
+
+    FILE *unnecessary_sections_removed_file =
+        fopen(remove_section_filename, "w+");
+    if (!unnecessary_sections_removed_file)
+        return -1;
+
+    FILE *peephole_file = fopen(peephole_filename, "w+");
+    if (!peephole_file) {
+        err = -1;
+        goto peephole_file_err;
+    }
+
+    remove_unnecessary_section_commands(tmp_file,
+                                        unnecessary_sections_removed_file);
+    perform_peephole(unnecessary_sections_removed_file, peephole_file);
+
+    FILE *output = fopen(pathname, "w+");
+    if (!output) {
+        err = -1;
+        goto output_file_err;
+    }
+
+    fseek(peephole_file, 0, SEEK_SET);
+    while (1) {
+        const char c = fgetc(peephole_file);
+        if (c == EOF)
+            break;
+        fputc(c, output);
+    }
+
+    fclose(output);
+    output = NULL;
+
+output_file_err:
+    fclose(peephole_file);
+    peephole_file = NULL;
+    remove(peephole_filename);
+
+peephole_file_err:
+    fclose(unnecessary_sections_removed_file);
+    unnecessary_sections_removed_file = NULL;
+    if (err || delete_unoptimized)
+        remove(remove_section_filename);
+
+    return err;
 }
 
 void
 codegen_destroy(void)
 {
-    if (!file)
+    if (!tmp_file)
         return;
 
-    fclose(file);
-    file = NULL;
+    fclose(tmp_file);
+    tmp_file = NULL;
+
+    remove(template_filename);
 }
 
 void
@@ -252,9 +425,9 @@ codegen_add_unnit_value(enum symbol_type type, struct codegen_value_info *info)
     info->size = size_from_type(type);
 
     info->address = get_next_address(&current_bss_address, info->size);
-    fputs("\tsection .bss\n\t; codegen_add_unnit_value.\n", file);
-    fprintf(file, "\talignb %lu\n", info->size);
-    fprintf(file, "\tresb %lu\t; @ 0x%lx\n", info->size, info->address);
+    fputs("\tsection .bss\n\t; codegen_add_unnit_value.\n", tmp_file);
+    fprintf(tmp_file, "\talignb %lu\n", info->size);
+    fprintf(tmp_file, "\tresb %lu\t; @ 0x%lx\n", info->size, info->address);
 
     info->section = SYMBOL_SECTION_BSS;
 }
@@ -289,46 +462,46 @@ codegen_add_value(enum symbol_type type,
 
     info->address = get_next_address(addr_counter, info->size);
 
-    fprintf(file, "\tsection %s\n\t; codegen_add_value.\n", section_name);
-    fprintf(file, "\talign %lu\n", info->size);
+    fprintf(tmp_file, "\tsection %s\n\t; codegen_add_value.\n", section_name);
+    fprintf(tmp_file, "\talign %lu\n", info->size);
 
     switch (type) {
         case SYMBOL_TYPE_LOGIC:
         case SYMBOL_TYPE_CHAR:
         case SYMBOL_TYPE_STRING:
-            fputs("\tdb ", file);
+            fputs("\tdb ", tmp_file);
             break;
         case SYMBOL_TYPE_FLOATING_POINT:
         case SYMBOL_TYPE_INTEGER:
-            fputs("\tdd ", file);
+            fputs("\tdd ", tmp_file);
             break;
         default:
             UNREACHABLE();
     }
 
     if (has_minus)
-        fputc('-', file);
+        fputc('-', tmp_file);
 
     switch (type) {
         case SYMBOL_TYPE_LOGIC:
             if (is_case_insensitive_equal("true", lexeme))
-                fputc('1', file);
+                fputc('1', tmp_file);
             else
-                fputc('0', file);
+                fputc('0', tmp_file);
             break;
         case SYMBOL_TYPE_STRING:
-            fprintf(file, "%s,0", lexeme);
+            fprintf(tmp_file, "%s,0", lexeme);
             break;
         case SYMBOL_TYPE_CHAR:
         case SYMBOL_TYPE_FLOATING_POINT:
         case SYMBOL_TYPE_INTEGER:
-            fputs(lexeme, file);
+            fputs(lexeme, tmp_file);
             break;
         default:
             UNREACHABLE();
     }
 
-    fprintf(file, "\t; @ 0x%lx\n", info->address);
+    fprintf(tmp_file, "\t; @ 0x%lx\n", info->address);
 
     if (type == SYMBOL_TYPE_STRING) {
         // Reserve enough space for the unnitialized portion of the string.
@@ -340,7 +513,7 @@ codegen_add_value(enum symbol_type type,
         // +1 because of \0
         const uint64_t already_reserved_size = strlen(lexeme) - 1;
         const uint64_t to_reserve = info->size - already_reserved_size;
-        fprintf(file, "\ttimes %lu db 0\n", to_reserve);
+        fprintf(tmp_file, "\ttimes %lu db 0\n", to_reserve);
     }
 }
 
@@ -362,7 +535,7 @@ codegen_add_tmp(enum symbol_type type,
     info->size = size_from_type(type);
     info->address = get_next_address(&current_bss_tmp_address, info->size);
 
-    fputs("\tsection .text\n\t; codegen_add_tmp.\n", file);
+    fputs("\tsection .text\n\t; codegen_add_tmp.\n", tmp_file);
 
     const char *reg;
     if (type == SYMBOL_TYPE_INTEGER)
@@ -373,18 +546,18 @@ codegen_add_tmp(enum symbol_type type,
         UNREACHABLE();
 
     if (type != SYMBOL_TYPE_LOGIC) {
-        fprintf(file, "\tmov %s, %s\n", reg, lexeme);
+        fprintf(tmp_file, "\tmov %s, %s\n", reg, lexeme);
     } else {
         if (is_case_insensitive_equal("true", lexeme)) {
-            fputs("\tmov al, 1\n", file);
+            fputs("\tmov al, 1\n", tmp_file);
         } else if (is_case_insensitive_equal("false", lexeme)) {
-            fputs("\tmov al, 0\n", file);
+            fputs("\tmov al, 0\n", tmp_file);
         } else {
             UNREACHABLE();
         }
     }
 
-    fprintf(file, "\tmov [TMP + %lu], %s\n", info->address, reg);
+    fprintf(tmp_file, "\tmov [TMP + %lu], %s\n", info->address, reg);
 }
 
 static const char *
@@ -416,7 +589,7 @@ codegen_logic_negate(struct codegen_value_info *f)
     f->address = get_next_address(&current_bss_tmp_address, f->size);
     f->section = SYMBOL_SECTION_NONE;
 
-    fprintf(file,
+    fprintf(tmp_file,
             "\tsection .text\n"
             "\t; codegen_logic_negate.\n"
             "\tmov al, [%s + %lu]\n"
@@ -444,7 +617,7 @@ codegen_convert_to_integer(struct codegen_value_info *info)
     // We definitely want to truncate here and the right instruction
     // would be cvttss2si (the extra t is for truncation).
     // Since I can't use it, I'm gonna round the number before converting... :(
-    fprintf(file,
+    fprintf(tmp_file,
             "\tsection .text\n"
             "\t; codegen_convert_to_integer.\n"
             "\tmovss xmm0, [%s + %lu]\n"
@@ -469,7 +642,7 @@ codegen_convert_to_floating_point(struct codegen_value_info *info)
     info->type = SYMBOL_TYPE_FLOATING_POINT;
     info->address = get_next_address(&current_bss_tmp_address, info->size);
 
-    fprintf(file,
+    fprintf(tmp_file,
             "\tsection .text\n"
             "\t; codegen_convert_to_floating_point.\n"
             "\tmov eax, [%s + %lu]\n"
@@ -498,10 +671,10 @@ perform_addition_or_subtraction(const char *instr,
 
     fputs("\tsection .text\n"
           "\t; perform_addition_or_subtraction.\n",
-          file);
+          tmp_file);
 
     if (exps_info->type == SYMBOL_TYPE_FLOATING_POINT) {
-        fprintf(file,
+        fprintf(tmp_file,
                 "\tmovss xmm0, [%s + %lu]\n"
                 "\tmovss xmm1, [%s + %lu]\n"
                 "\t%sss xmm0, xmm1\n"
@@ -513,7 +686,7 @@ perform_addition_or_subtraction(const char *instr,
                 instr,
                 exps_info->address);
     } else if (exps_info->type == SYMBOL_TYPE_INTEGER) {
-        fprintf(file,
+        fprintf(tmp_file,
                 "\tmov eax, [%s + %lu]\n"
                 "\tmov ebx, [%s + %lu]\n"
                 "\t%s eax, ebx\n"
@@ -560,7 +733,7 @@ codegen_perform_logical_or(struct codegen_value_info *exps_info,
     char je_label_buffer[16];
     get_next_label(je_label_buffer, sizeof(je_label_buffer));
 
-    fprintf(file,
+    fprintf(tmp_file,
             "\tsection .text\n"
             "\t; codegen_perform_logical_or.\n"
             "\tmov al, [%s + %lu]\n"
@@ -591,10 +764,10 @@ codegen_negate(struct codegen_value_info *t_info)
 
     fputs("\tsection .text\n"
           "\t; codegen_negate.\n",
-          file);
+          tmp_file);
 
     if (t_info->type == SYMBOL_TYPE_FLOATING_POINT) {
-        fprintf(file,
+        fprintf(tmp_file,
                 "\tmov rax, 0\n"
                 "\tcvtsi2ss xmm0, rax\n"
                 "\tmovss xmm1, [%s + %lu]\n"
@@ -604,7 +777,7 @@ codegen_negate(struct codegen_value_info *t_info)
                 original_address,
                 t_info->address);
     } else if (t_info->type == SYMBOL_TYPE_INTEGER) {
-        fprintf(file,
+        fprintf(tmp_file,
                 "\tmov eax, [%s + %lu]\n"
                 "\tneg eax\n"
                 "\tmov [TMP + %lu], eax\n",
@@ -628,13 +801,13 @@ codegen_perform_multiplication(struct codegen_value_info *t_info,
 
     fputs("\tsection .text\n"
           "\t; codegen_perform_multiplication.\n",
-          file);
+          tmp_file);
 
     t_info->section = SYMBOL_SECTION_NONE;
     t_info->address = get_next_address(&current_bss_tmp_address, t_info->size);
 
     if (t_info->type == SYMBOL_TYPE_FLOATING_POINT) {
-        fprintf(file,
+        fprintf(tmp_file,
                 "\tmovss xmm0, [%s + %lu]\n"
                 "\tmovss xmm1, [%s + %lu]\n"
                 "\tmulss xmm0, xmm1\n"
@@ -645,7 +818,7 @@ codegen_perform_multiplication(struct codegen_value_info *t_info,
                 f_info->address,
                 t_info->address);
     } else if (t_info->type == SYMBOL_TYPE_INTEGER) {
-        fprintf(file,
+        fprintf(tmp_file,
                 "\tmov eax, [%s + %lu]\n"
                 "\tmov ebx, [%s + %lu]\n"
                 "\timul ebx\n"
@@ -675,13 +848,13 @@ codegen_perform_division(struct codegen_value_info *t_info,
     const char *t_label = label_from_section(t_info->section);
     const char *f_label = label_from_section(f_info->section);
 
-    fputs("\tsection .text ; codegen_perform_division.\n", file);
+    fputs("\tsection .text ; codegen_perform_division.\n", tmp_file);
 
     t_info->section = SYMBOL_SECTION_NONE;
     t_info->address = get_next_address(&current_bss_tmp_address, t_info->size);
 
     if (t_info->type == SYMBOL_TYPE_FLOATING_POINT) {
-        fprintf(file,
+        fprintf(tmp_file,
                 "\tmovss xmm0, [%s + %lu]\n"
                 "\tmovss xmm1, [%s + %lu]\n"
                 "\tdivss xmm0, xmm1\n"
@@ -708,13 +881,13 @@ perform_integer_division(struct codegen_value_info *t_info,
 
     fputs("\tsection .text\n"
           "\t; perform_integer_division.\n",
-          file);
+          tmp_file);
 
     t_info->section = SYMBOL_SECTION_NONE;
     t_info->address = get_next_address(&current_bss_tmp_address, t_info->size);
 
     if (t_info->type == SYMBOL_TYPE_INTEGER) {
-        fprintf(file,
+        fprintf(tmp_file,
                 "\tmov eax, [%s + %lu]\n"
                 "\tmov ebx, [%s + %lu]\n"
                 "\tcdq\n"
@@ -733,7 +906,7 @@ codegen_perform_integer_division(struct codegen_value_info *t_info,
                                  const struct codegen_value_info *f_info)
 {
     perform_integer_division(t_info, f_info);
-    fprintf(file,
+    fprintf(tmp_file,
             "\tmov [TMP + %lu], eax ; codegen_perform_integer_division\n",
             t_info->address);
 }
@@ -743,7 +916,7 @@ codegen_perform_mod(struct codegen_value_info *t_info,
                     const struct codegen_value_info *f_info)
 {
     perform_integer_division(t_info, f_info);
-    fprintf(file,
+    fprintf(tmp_file,
             "\tmov [TMP + %lu], edx ; codegen_perform_integer_division\n",
             t_info->address);
 }
@@ -767,7 +940,7 @@ codegen_perform_and(struct codegen_value_info *t_info,
     char end_label_buffer[16];
     get_next_label(end_label_buffer, sizeof(end_label_buffer));
 
-    fprintf(file,
+    fprintf(tmp_file,
             "\tsection .text\n"
             "\t; codegen_perform_logical_and.\n"
             "\tmov al, [%s + %lu]\n"
@@ -809,12 +982,12 @@ load_and_compare(struct codegen_value_info *exp_info,
 
     fputs("\tsection .text\n"
           "\t; load_and_compare.\n",
-          file);
+          tmp_file);
 
     switch (exp_info->type) {
         case SYMBOL_TYPE_CHAR:
         case SYMBOL_TYPE_LOGIC:
-            fprintf(file,
+            fprintf(tmp_file,
                     "\tmov al, [%s + %lu]\n"
                     "\tmov bl, [%s + %lu]\n"
                     "\tcmp al, bl\n",
@@ -824,7 +997,7 @@ load_and_compare(struct codegen_value_info *exp_info,
                     exps_info->address);
             break;
         case SYMBOL_TYPE_INTEGER:
-            fprintf(file,
+            fprintf(tmp_file,
                     "\tmov eax, [%s + %lu]\n"
                     "\tmov ebx, [%s + %lu]\n"
                     "\tcmp eax, ebx\n",
@@ -834,7 +1007,7 @@ load_and_compare(struct codegen_value_info *exp_info,
                     exps_info->address);
             break;
         case SYMBOL_TYPE_FLOATING_POINT:
-            fprintf(file,
+            fprintf(tmp_file,
                     "\tmovss xmm0, [%s + %lu]\n"
                     "\tmovss xmm1, [%s + %lu]\n"
                     "\tcomiss xmm0, xmm1\n",
@@ -893,8 +1066,8 @@ generate_comparison_jump(enum token operation_tok, enum symbol_type type)
     char cmp_not_ok_label[16];
     get_next_label(cmp_not_ok_label, sizeof(cmp_not_ok_label));
 
-    fputs("\t; generate_comparison_jump.\n", file);
-    fprintf(file,
+    fputs("\t; generate_comparison_jump.\n", tmp_file);
+    fprintf(tmp_file,
             "\t%s %s\n"
             "\tmov al, 0\n"
             "\tjmp %s\n"
@@ -928,7 +1101,7 @@ compare_string(enum token operation_tok,
     char end_label[16];
     get_next_label(end_label, sizeof(end_label));
 
-    fprintf(file,
+    fprintf(tmp_file,
             "\tsection .text\n"
             "\t; compare_string.\n"
             "\tmov rsi, %s\n"
@@ -984,7 +1157,7 @@ codegen_perform_comparison(enum token operation_tok,
         compare_string(operation_tok, exp_info, exps_info);
     }
 
-    fprintf(file,
+    fprintf(tmp_file,
             "\tmov [TMP + %lu], al ; codegen_perform_comparison.\n",
             new_address);
 
@@ -1003,11 +1176,11 @@ codegen_move_to_id_entry(struct symbol *id_entry,
 
     fputs("\tsection .text\n"
           "\t; codegen_move_to_id_entry.\n",
-          file);
+          tmp_file);
 
     switch (id_entry->symbol_type) {
         case SYMBOL_TYPE_FLOATING_POINT:
-            fprintf(file,
+            fprintf(tmp_file,
                     "\tmovss xmm0, [%s + %lu]\n"
                     "\tmovss [%s + %lu], xmm0\n",
                     exp_label,
@@ -1016,7 +1189,7 @@ codegen_move_to_id_entry(struct symbol *id_entry,
                     id_entry->address);
             break;
         case SYMBOL_TYPE_INTEGER:
-            fprintf(file,
+            fprintf(tmp_file,
                     "\tmov eax, [%s + %lu]\n"
                     "\tmov [%s + %lu], eax\n",
                     exp_label,
@@ -1026,7 +1199,7 @@ codegen_move_to_id_entry(struct symbol *id_entry,
             break;
         case SYMBOL_TYPE_LOGIC:
         case SYMBOL_TYPE_CHAR:
-            fprintf(file,
+            fprintf(tmp_file,
                     "\tmov al, [%s + %lu]\n"
                     "\tmov [%s + %lu], al\n",
                     exp_label,
@@ -1041,7 +1214,7 @@ codegen_move_to_id_entry(struct symbol *id_entry,
             char loop_end_label[16];
             get_next_label(loop_end_label, sizeof(loop_end_label));
 
-            fprintf(file,
+            fprintf(tmp_file,
                     "\tmov rsi, %s\n"
                     "\tadd rsi, %lu\n"
                     "\tmov rdi, %s\n"
@@ -1084,7 +1257,7 @@ codegen_move_to_id_entry_idx(struct symbol *id_entry,
     const char *idx_expr_info_label =
         label_from_section(idx_expr_info->section);
 
-    fprintf(file,
+    fprintf(tmp_file,
             "\tsection .text\n"
             "\t; codegen_move_to_id_entry_idx.\n"
             "\tmov eax, [%s + %lu]\n"
@@ -1110,7 +1283,7 @@ write_string(const struct codegen_value_info *exp)
     char loop_label[16];
     get_next_label(loop_label, sizeof(loop_label));
 
-    fprintf(file,
+    fprintf(tmp_file,
             "\t; write_string\n"
             "\tmov esi, %s + %lu\n"
             "\tmov edi, TMP + %lu\n"
@@ -1139,7 +1312,7 @@ write_char(const struct codegen_value_info *exp)
     const uint64_t tmp_address = get_next_address(&current_bss_tmp_address, 4);
 
     const char *label = label_from_section(exp->section);
-    fprintf(file,
+    fprintf(tmp_file,
             "\t; write_char\n"
             // Recover char from memory.
             "\tmov al, [%s + %lu]\n"
@@ -1170,7 +1343,7 @@ write_logic(const struct codegen_value_info *exp)
     char jmp_label[16];
     get_next_label(jmp_label, sizeof(jmp_label));
 
-    fprintf(file,
+    fprintf(tmp_file,
             "\t ; write_logic\n"
             "\tmov rax, [%s + %lu]\n"
             "\tcmp rax, 0\n"
@@ -1213,7 +1386,7 @@ write_integer(const struct codegen_value_info *exp)
     char loop_1_beg_label[16];
     get_next_label(loop_1_beg_label, sizeof(loop_1_beg_label));
 
-    fprintf(file,
+    fprintf(tmp_file,
             "\t; write_integer\n"
             // Number we will convert.
             "\tmov eax, [%s + %lu]\n"
@@ -1297,7 +1470,7 @@ write_float(const struct codegen_value_info *exp)
     get_next_label(float_conversion_beg_label,
                    sizeof(float_conversion_beg_label));
 
-    fprintf(file,
+    fprintf(tmp_file,
             "\t; write_float\n"
             // Number we will convert.
             "\tmovss xmm0, [%s + %lu]\n"
@@ -1395,7 +1568,7 @@ codegen_write(const struct codegen_value_info *exp, uint8_t needs_new_line)
 {
     fputs("\tsection .text\n"
           "\t; codegen_write\n",
-          file);
+          tmp_file);
 
     switch (exp->type) {
         case SYMBOL_TYPE_FLOATING_POINT:
@@ -1428,13 +1601,13 @@ codegen_write(const struct codegen_value_info *exp, uint8_t needs_new_line)
               "\tmov bl, 0\n"
               "\tmov [eax], bl\n"
               "\tadd edx, 1\n",
-              file);
+              tmp_file);
     }
 
     fputs("\tmov eax, 1\n"
           "\tmov edi, 1\n"
           "\tsyscall\n",
-          file);
+          tmp_file);
 }
 
 void
@@ -1454,7 +1627,7 @@ codegen_move_idx_to_tmp(const struct symbol *id_entry,
         label_from_section(idx_expr_info->section);
     const char *id_entry_label = label_from_section(id_entry->symbol_section);
 
-    fprintf(file,
+    fprintf(tmp_file,
             "\tsection .text\n"
             "\t; codegen_move_idx_to_tmp.\n"
             "\tmov eax, [%s + %lu]\n"
@@ -1477,7 +1650,7 @@ codegen_start_loop(void)
     get_next_label(while_loop_start_label, sizeof(while_loop_start_label));
     get_next_label(while_loop_end_label, sizeof(while_loop_end_label));
 
-    fprintf(file,
+    fprintf(tmp_file,
             "\tsection .text\n"
             "\t; codegen_start_loop.\n"
             "%s:\n",
@@ -1491,7 +1664,7 @@ codegen_eval_loop_expr(const struct codegen_value_info *exp)
 
     const char *exp_label = label_from_section(exp->section);
 
-    fprintf(file,
+    fprintf(tmp_file,
             "\tsection .text\n"
             "\t; codegen_eval_loop_expr.\n"
             "\tmov al, [%s + %lu]\n"
@@ -1505,7 +1678,7 @@ codegen_eval_loop_expr(const struct codegen_value_info *exp)
 void
 codegen_finish_loop(void)
 {
-    fprintf(file,
+    fprintf(tmp_file,
             "\tsection .text\n"
             "\t; codegen_finish_loop.\n"
             "\tjmp %s\n"
@@ -1527,7 +1700,7 @@ codegen_start_if(const struct codegen_value_info *exp)
     get_next_label(if_end_label, sizeof(if_end_label));
     get_next_label(if_false_label, sizeof(if_false_label));
 
-    fprintf(file,
+    fprintf(tmp_file,
             "\tsection .text\n"
             "\t; codegen_start_if.\n"
             "\tmov al, [%s + %lu]\n"
@@ -1541,7 +1714,7 @@ codegen_start_if(const struct codegen_value_info *exp)
 void
 codegen_if_jmp(void)
 {
-    fprintf(file,
+    fprintf(tmp_file,
             "\tsection .text\n"
             "\t; codegen_if_jmp.\n"
             "\tjmp %s\n",
@@ -1551,7 +1724,7 @@ codegen_if_jmp(void)
 void
 codegen_start_else(void)
 {
-    fprintf(file,
+    fprintf(tmp_file,
             "\tsection .text\n"
             "\t; codegen_start_else.\n"
             "%s:\n",
@@ -1561,7 +1734,7 @@ codegen_start_else(void)
 void
 codegen_finish_if(uint8_t had_else)
 {
-    fprintf(file,
+    fprintf(tmp_file,
             "\tsection .text\n"
             "\t; codegen_finish_if.\n"
             "%s:\n",
@@ -1583,7 +1756,7 @@ read_logic(uint64_t buffer_addr)
     char end_label[16];
     get_next_label(end_label, sizeof(end_label));
 
-    fprintf(file,
+    fprintf(tmp_file,
             "\t; read_logic\n"
             "\tmov esi, TMP + %lu\n"
             "\tmov rax, [esi]\n"
@@ -1638,7 +1811,7 @@ read_int(uint64_t buffer_addr)
     char end_label[16];
     get_next_label(end_label, sizeof(end_label));
 
-    fprintf(file,
+    fprintf(tmp_file,
             "\t; read_int\n"
             "\tmov eax, 0\n"
             "\tmov ebx, 0\n"
@@ -1712,7 +1885,7 @@ read_float(uint64_t buffer_addr)
     char no_signal_label[16];
     get_next_label(no_signal_label, sizeof(no_signal_label));
 
-    fprintf(file,
+    fprintf(tmp_file,
             "\t; read_float.\n"
             "\tmov eax, 0\n"
             "\tsubss xmm0, xmm0\n"
@@ -1787,7 +1960,7 @@ codegen_read_into(struct symbol *id_entry)
     get_next_label(je_label, sizeof(je_label));
 
     fprintf(
-        file,
+        tmp_file,
         "\tsection .text\n"
         "\t; codegen_read_into.\n"
         "\tmov eax, 0\n"

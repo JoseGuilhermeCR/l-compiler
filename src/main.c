@@ -135,7 +135,8 @@ main(int argc, const char *argv[])
 
         symbol_table_dump_to(&table, stdout);
 
-        codegen_dump("ola.asm");
+        if (!codegen_dump("ola", 0))
+            return -1;
         codegen_destroy();
 
         //  if (assemble(out_file) == 0) {
