@@ -1556,7 +1556,7 @@ read_int(uint64_t buffer_addr)
             "\tmov esi, TMP + %lu\n"
             // Take a look at the first character to verify if it's a '-'.
             "\tmov bl, [esi]\n"
-            "\tcmp bl, \'-\'\n"
+            "\tcmp bl, '-'\n"
             "\tjne %s\n"
             // In case it is, store a -1 in the stack...
             "\tmov dx, -1\n"
@@ -1573,8 +1573,7 @@ read_int(uint64_t buffer_addr)
             // it means an overflow happened.
             "\tcmp edx, 0\n"
             "\tjne INVALID_INPUT_HANDLER\n"
-            // Just keep normally.
-            "\tsub bl, \'0\'\n"
+            "\tsub bl, 0\n"
             "\tadd eax, ebx\n"
             "\tadd esi, 1\n"
             "\tmov bl, [esi]\n"
@@ -1598,6 +1597,92 @@ read_int(uint64_t buffer_addr)
             int_address);
 
     return int_address;
+}
+
+uint64_t
+read_float(uint64_t buffer_addr)
+{
+    // FIXME:
+    // This assumes the first character might be a '-' and that
+    // we might find a '.' amidst the input, but no further validation
+    // is done... we assume every other character is a *valid* digit.
+    const uint64_t float_address =
+        get_next_address(&current_bss_tmp_address, 4);
+
+    char int_loop_start[16];
+    get_next_label(int_loop_start, sizeof(int_loop_start));
+
+    char float_loop_start[16];
+    get_next_label(float_loop_start, sizeof(float_loop_start));
+
+    char loop_end[16];
+    get_next_label(loop_end, sizeof(loop_end));
+
+    char no_signal_label[16];
+    get_next_label(no_signal_label, sizeof(no_signal_label));
+
+    fprintf(file,
+            "\t; read_float.\n"
+            "\tmov eax, 0\n"
+            "\tsubss xmm0, xmm0\n"
+            "\tmov ebx, 0\n"
+            "\tmov ecx, 10\n"
+            "\tcvtsi2ss xmm3, ecx\n"
+            "\tmovss xmm2, xmm3\n"
+            "\tmov rdx, 1\n"
+            "\tmov esi, TMP + %lu\n"
+            "\tmov bl, [esi]\n"
+            "\tcmp bl, '-'\n"
+            "\tjne %s\n"
+            "\tmov rdx, -1\n"
+            "\tadd esi, 1\n"
+            "\tmov bl, [esi]\n"
+            "%s:\n"
+            "\tpush rdx\n"
+            "\tmov rdx, 0\n"
+            "%s:\n"
+            "\tcmp bl, 0\n"
+            "\tje %s\n"
+            "\tcmp bl, '.'\n"
+            "\tje %s\n"
+            "\timul ecx\n"
+            "\tsub bl, '0'\n"
+            "\tadd eax, ebx\n"
+            "\tadd esi, 1\n"
+            "\tmov bl, [esi]\n"
+            "\tjmp %s\n"
+            "%s:\n"
+            "\tadd esi, 1\n"
+            "\tmov bl, [esi]\n"
+            "\tcmp bl, 0\n"
+            "\tje %s\n"
+            "\tsub bl, '0'\n"
+            "\tcvtsi2ss xmm1, rbx\n"
+            "\tdivss xmm1, xmm2\n"
+            "\taddss xmm0, xmm1\n"
+            "\tmulss xmm2, xmm3\n"
+            "\tjmp %s\n"
+            "%s:\n"
+            "\tcvtsi2ss xmm1, rax\n"
+            "\taddss xmm0, xmm1\n"
+            "\tpop rcx\n"
+            "\tcvtsi2ss xmm1, rcx\n"
+            "\tmulss xmm0, xmm1\n"
+            "\tmovss [TMP + %lu], xmm0\n",
+            buffer_addr,
+            no_signal_label,
+            no_signal_label,
+            int_loop_start,
+            loop_end,
+            float_loop_start,
+            int_loop_start,
+            float_loop_start,
+            loop_end,
+            float_loop_start,
+            loop_end,
+            float_address);
+
+    return float_address;
 }
 
 void
@@ -1637,7 +1722,7 @@ codegen_read_into(struct symbol *id_entry)
             info.address = read_int(tmp_address);
             break;
         case SYMBOL_TYPE_FLOATING_POINT:
-            // info.address = read_float();
+            info.address = read_float(tmp_address);
             break;
         case SYMBOL_TYPE_LOGIC:
             info.address = read_logic(tmp_address);
