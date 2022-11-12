@@ -77,7 +77,7 @@ read_file(struct file *file, const char *pathname)
 }
 
 void
-destroy_stdin_file(struct file *file)
+destroy_file(struct file *file)
 {
     free(file->buffer);
     file->buffer = NULL;

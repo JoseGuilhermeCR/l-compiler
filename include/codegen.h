@@ -14,10 +14,10 @@ struct codegen_value_info
 };
 
 int
-codegen_init(const char *pathname);
+codegen_init(void);
 
 void
-codegen_dump(void);
+codegen_dump(const char *pathname);
 
 void
 codegen_destroy(void);

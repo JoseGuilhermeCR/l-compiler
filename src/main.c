@@ -95,24 +95,23 @@ cleanup(void)
 {
     codegen_destroy();
     symbol_table_destroy(&table);
-    destroy_stdin_file(&file);
+    destroy_file(&file);
 }
 
 int
 main(int argc, const char *argv[])
 {
-    const char *out_file = "l.asm";
-    codegen_init(out_file);
+    if (argc < 2) {
+        // TODO: Print Usage.
+        return 1;
+    }
 
     assert(atexit(cleanup) == 0);
 
-    if (argc < 2) {
-        fputs("Usando entrada do terminal já que nenhum arquivo foi passado.\n",
-              ERR_STREAM);
-        assert(read_file_from_stdin(&file, MAX_FILE_SIZE) == 0);
-    } else {
-        assert(read_file(&file, argv[1]) == 0);
-    }
+    const char *out_file = "l.asm";
+    codegen_init();
+
+    assert(read_file(&file, argv[1]) == 0);
 
     assert(symbol_table_create(&table, 64) == 0);
     symbol_table_populate_with_keywords(&table);
@@ -136,7 +135,7 @@ main(int argc, const char *argv[])
 
         symbol_table_dump_to(&table, stdout);
 
-        codegen_dump();
+        codegen_dump("ola.asm");
         codegen_destroy();
 
         //  if (assemble(out_file) == 0) {
