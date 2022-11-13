@@ -64,14 +64,19 @@ main(int argc, const char *argv[])
 {
     if (argc < 2) {
         fprintf(ERR_STREAM,
-                "Usage: %s <program_file> [--keep-unoptimized]\n",
+                "Usage: %s <program_file> [--keep-unoptimized] [--assemble-and-link]\n",
                 argv[0]);
         return -1;
     }
 
     uint8_t keep_unoptimized = 0;
-    if (argc == 3 && strcmp(argv[2], "--keep-unoptimized") == 0)
-        keep_unoptimized = 1;
+    uint8_t assemble_and_link = 0;
+    for (int i = 2; i < argc; ++i) {
+        if (strcmp(argv[i], "--keep-unoptimized") == 0)
+            keep_unoptimized = 1;
+        else if (strcmp(argv[i], "--assemble-and-link") == 0)
+            assemble_and_link = 1;
+    }
 
     int status = 0;
 
@@ -113,7 +118,7 @@ main(int argc, const char *argv[])
 
             fprintf(ERR_STREAM, "Compiled lines: %u\n", lexer.line);
 
-            if (codegen_dump(filename, keep_unoptimized, 1) < 0) {
+            if (codegen_dump(filename, keep_unoptimized, assemble_and_link) < 0) {
                 fputs("codegen_dump failed.\n", ERR_STREAM);
                 free(filename);
             }
