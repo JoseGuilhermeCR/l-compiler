@@ -43,15 +43,13 @@ enum syntatic_result
 struct syntatic_ctx
 {
     struct lexer *lexer;
-    struct lexical_entry *entry;
+    struct lexical_entry entry;
     struct lexical_entry last_entry;
     uint8_t found_last_token;
 };
 
 void
-syntatic_init(struct syntatic_ctx *ctx,
-              struct lexer *lexer,
-              struct lexical_entry *entry);
+syntatic_init(struct syntatic_ctx *ctx, struct lexer *lexer);
 
 int
 syntatic_start(struct syntatic_ctx *ctx);

@@ -35,120 +35,97 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/wait.h>
-#include <unistd.h>
+#include <string.h>
 
-static struct file file;
-static struct lexer lexer;
-static struct symbol_table table;
-
-static int
-link_object(const char *pathname)
+static char *
+extract_filename(const char *pathname)
 {
-    pid_t pid = fork();
+    char *buffer = malloc(256);
+    if (!buffer)
+        return NULL;
 
-    if (pid > 0) {
-        char *const ld = "ld";
-        char *const args[] = { ld, pathname, NULL };
+    const char *last_separator = strrchr(pathname, '/');
+    if (last_separator)
+        ++last_separator;
+    else
+        last_separator = pathname;
 
-        if (execvp("ld", args) < 0) {
-            perror("execvp");
-            return -1;
-        }
-    } else if (pid == 0) {
-        fputs("Waiting for linker...\n", ERR_STREAM);
-        if (waitpid(-1, NULL, 0) < -1)
-            perror("waitpid");
-        return 0;
+    char *ptr = buffer;
+    while (*last_separator) {
+        *ptr++ = *last_separator++;
     }
 
-    perror("fork");
-    return pid;
-}
-
-static int
-assemble(const char *pathname)
-{
-    pid_t pid = fork();
-
-    if (pid > 0) {
-        char *const nasm = "nasm";
-        char *const args[] = { nasm, "-f", "elf64", pathname, NULL };
-
-        if (execvp("nasm", args) < 0) {
-            perror("execvp");
-            return -1;
-        }
-    } else if (pid == 0) {
-        fputs("Waiting for assembler...\n", ERR_STREAM);
-        if (waitpid(-1, NULL, 0) < -1)
-            perror("waitpid");
-        return 0;
-    }
-
-    perror("fork");
-    return pid;
-}
-
-static void
-cleanup(void)
-{
-    codegen_destroy();
-    symbol_table_destroy(&table);
-    destroy_file(&file);
+    *ptr = 0;
+    return buffer;
 }
 
 int
 main(int argc, const char *argv[])
 {
     if (argc < 2) {
-        // TODO: Print Usage.
-        return 1;
+        fprintf(ERR_STREAM,
+                "Usage: %s <program_file> [--keep-unoptimized]\n",
+                argv[0]);
+        return -1;
     }
 
-    assert(atexit(cleanup) == 0);
+    uint8_t keep_unoptimized = 0;
+    if (argc == 3 && strcmp(argv[2], "--keep-unoptimized") == 0)
+        keep_unoptimized = 1;
 
-    const char *out_file = "l.asm";
-    codegen_init();
+    int status = 0;
 
-    assert(read_file(&file, argv[1]) == 0);
+    struct file file;
+    status = read_file(&file, argv[1]);
+    if (status < 0) {
+        fprintf(ERR_STREAM, "Failed to read %s\n", argv[1]);
+        return -1;
+    }
 
-    assert(symbol_table_create(&table, 64) == 0);
+    struct symbol_table table;
+    status = symbol_table_create(&table, 64);
+    if (status < 0) {
+        fputs("Failed to create symbol table.\n", ERR_STREAM);
+        goto symbol_table_err;
+    }
     symbol_table_populate_with_keywords(&table);
 
+    struct lexer lexer;
     lexer_init(&lexer, &file, &table);
 
-    int status = -1;
+    struct syntatic_ctx syntatic_ctx;
+    syntatic_init(&syntatic_ctx, &lexer);
 
-    struct lexical_entry entry;
-    enum lexer_result result = lexer_get_next_token(&lexer, &entry);
-    if (result == LEXER_RESULT_FOUND) {
-        struct syntatic_ctx syntatic_ctx;
-        syntatic_init(&syntatic_ctx, &lexer, &entry);
-        status = syntatic_start(&syntatic_ctx);
-    } else if (result != LEXER_RESULT_EMPTY) {
+    codegen_init();
+
+    status = -1;
+    enum lexer_result result =
+        lexer_get_next_token(&lexer, &syntatic_ctx.entry);
+    if (result == LEXER_RESULT_ERROR) {
         lexer_print_error(&lexer);
+        goto lexer_err;
     }
 
-    if (status == 0) {
-        fprintf(ERR_STREAM, "%i linhas compiladas.\n", lexer.line);
+    if (result == LEXER_RESULT_FOUND) {
+        status = syntatic_start(&syntatic_ctx);
+        if (status == 0) {
+            char *filename = extract_filename(argv[1]);
 
-        symbol_table_dump_to(&table, stdout);
+            fprintf(ERR_STREAM, "Compiled lines: %u\n", lexer.line);
 
-        if (!codegen_dump("ola", 0))
-            return -1;
-        codegen_destroy();
-
-        //  if (assemble(out_file) == 0) {
-        //      usleep(500 * 1000);
-        //      if (link_object("l.o") < 0) {
-        //          fputs("linking failed.\n", ERR_STREAM);
-        //      }
-        //  } else {
-        //      fputs("assemble failed.\n", ERR_STREAM);
-        //  }
+            if (codegen_dump(filename, keep_unoptimized, 1) < 0) {
+                fputs("codegen_dump failed.\n", ERR_STREAM);
+                free(filename);
+            }
+        }
     }
 
     codegen_destroy();
+
+lexer_err:
+    symbol_table_destroy(&table);
+
+symbol_table_err:
+    destroy_file(&file);
     return status;
 }

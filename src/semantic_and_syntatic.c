@@ -482,22 +482,21 @@ semantic_apply_sr1(struct symbol *symbol, enum token tok)
 static void
 syntatic_report_unexpected_token_error(struct syntatic_ctx *ctx)
 {
-    fprintf(ERR_STREAM, "%i\nErro: ", ctx->entry->line);
-    if (ctx->entry->lexeme.size) {
-        fprintf(ERR_STREAM,
-                "Token não esperado [%s].\n",
-                ctx->entry->lexeme.buffer);
+    fprintf(ERR_STREAM, "%i\nErro: ", ctx->entry.line);
+    if (ctx->entry.lexeme.size) {
+        fprintf(
+            ERR_STREAM, "Token não esperado [%s].\n", ctx->entry.lexeme.buffer);
     } else {
         fprintf(ERR_STREAM,
                 "Token não esperado [%s].\n",
-                get_lexeme_from_token(ctx->entry->token));
+                get_lexeme_from_token(ctx->entry.token));
     }
 }
 
 static void
 syntatic_report_unexpected_eof_error(struct syntatic_ctx *ctx)
 {
-    fprintf(ERR_STREAM, "%i\n", ctx->entry->line);
+    fprintf(ERR_STREAM, "%i\n", ctx->entry.line);
     fputs("Erro: Fim de arquivo não esperado.\n", ERR_STREAM);
 }
 
@@ -509,10 +508,11 @@ syntatic_match_token(struct syntatic_ctx *ctx, enum token token)
         return SYNTATIC_ERROR;
     }
 
-    if (ctx->entry->token == token) {
-        memcpy(&ctx->last_entry, ctx->entry, sizeof(*ctx->entry));
+    if (ctx->entry.token == token) {
+        memcpy(&ctx->last_entry, &ctx->entry, sizeof(ctx->entry));
 
-        enum lexer_result result = lexer_get_next_token(ctx->lexer, ctx->entry);
+        enum lexer_result result =
+            lexer_get_next_token(ctx->lexer, &ctx->entry);
         if (result == LEXER_RESULT_ERROR) {
             lexer_print_error(ctx->lexer);
             return SYNTATIC_ERROR;
@@ -550,11 +550,11 @@ syntatic_decl_var(struct syntatic_ctx *ctx, enum token type_tok)
     uint8_t has_assignment = 0;
     uint8_t has_minus = 0;
 
-    if (ctx->entry->token == TOKEN_ASSIGNMENT) {
+    if (ctx->entry.token == TOKEN_ASSIGNMENT) {
         has_assignment = 1;
         MATCH_OR_ERROR(ctx, TOKEN_ASSIGNMENT);
 
-        if (ctx->entry->token == TOKEN_MINUS) {
+        if (ctx->entry.token == TOKEN_MINUS) {
             has_minus = 1;
             HANDLE_SEMANTIC_RESULT(ctx, semantic_apply_sr2(id_entry, 1));
             MATCH_OR_ERROR(ctx, TOKEN_MINUS);
@@ -582,11 +582,11 @@ syntatic_decl_var(struct syntatic_ctx *ctx, enum token type_tok)
     id_entry->size = info.size;
     id_entry->address = info.address;
 
-    if (ctx->entry->token == TOKEN_SEMICOLON) {
+    if (ctx->entry.token == TOKEN_SEMICOLON) {
         MATCH_OR_ERROR(ctx, TOKEN_SEMICOLON);
         return 0;
-    } else if (ctx->entry->token == TOKEN_COMMA) {
-        while (ctx->entry->token == TOKEN_COMMA) {
+    } else if (ctx->entry.token == TOKEN_COMMA) {
+        while (ctx->entry.token == TOKEN_COMMA) {
             has_assignment = 0;
             has_minus = 0;
 
@@ -602,11 +602,11 @@ syntatic_decl_var(struct syntatic_ctx *ctx, enum token type_tok)
             semantic_apply_sr1(id_entry, type_tok);
 
             // Handle possible assignment for variable.
-            if (ctx->entry->token == TOKEN_ASSIGNMENT) {
+            if (ctx->entry.token == TOKEN_ASSIGNMENT) {
                 has_assignment = 1;
                 MATCH_OR_ERROR(ctx, TOKEN_ASSIGNMENT);
 
-                if (ctx->entry->token == TOKEN_MINUS) {
+                if (ctx->entry.token == TOKEN_MINUS) {
                     has_minus = 1;
                     HANDLE_SEMANTIC_RESULT(ctx,
                                            semantic_apply_sr2(id_entry, 1));
@@ -659,7 +659,7 @@ syntatic_decl_const(struct syntatic_ctx *ctx)
 
     MATCH_OR_ERROR(ctx, TOKEN_EQUAL);
 
-    if (ctx->entry->token == TOKEN_MINUS) {
+    if (ctx->entry.token == TOKEN_MINUS) {
         MATCH_OR_ERROR(ctx, TOKEN_MINUS);
         has_minus = 1;
     }
@@ -710,7 +710,7 @@ syntatic_read(struct syntatic_ctx *ctx)
 static int
 syntatic_is_first_of_f(struct syntatic_ctx *ctx)
 {
-    switch (ctx->entry->token) {
+    switch (ctx->entry.token) {
         case TOKEN_NOT:
         case TOKEN_OPENING_PAREN:
         case TOKEN_INT:
@@ -739,7 +739,7 @@ syntatic_f(struct syntatic_ctx *ctx, struct codegen_value_info *f_info)
         return -1;
     }
 
-    enum token tok = ctx->entry->token;
+    enum token tok = ctx->entry.token;
     switch (tok) {
         case TOKEN_NOT:
             MATCH_OR_ERROR(ctx, TOKEN_NOT);
@@ -793,7 +793,7 @@ syntatic_f(struct syntatic_ctx *ctx, struct codegen_value_info *f_info)
                 ctx, semantic_apply_sr8(ctx->last_entry.is_new_identifier));
 
             struct codegen_value_info brackets_inner_expr;
-            if (ctx->entry->token == TOKEN_OPENING_SQUARE_BRACKET) {
+            if (ctx->entry.token == TOKEN_OPENING_SQUARE_BRACKET) {
                 MATCH_OR_ERROR(ctx, TOKEN_OPENING_SQUARE_BRACKET);
 
                 had_brackets = 1;
@@ -838,7 +838,7 @@ syntatic_t(struct syntatic_ctx *ctx, struct codegen_value_info *t_info)
 
     memcpy(t_info, &f_info, sizeof(struct codegen_value_info));
 
-    enum token tok = ctx->entry->token;
+    enum token tok = ctx->entry.token;
     while (tok == TOKEN_TIMES || tok == TOKEN_LOGICAL_AND || tok == TOKEN_MOD ||
            tok == TOKEN_DIV || tok == TOKEN_DIVISION) {
 
@@ -869,7 +869,7 @@ syntatic_t(struct syntatic_ctx *ctx, struct codegen_value_info *t_info)
                 UNREACHABLE();
         }
 
-        tok = ctx->entry->token;
+        tok = ctx->entry.token;
     }
 
     return 0;
@@ -880,7 +880,7 @@ syntatic_exps(struct syntatic_ctx *ctx, struct codegen_value_info *exps_info)
 {
     uint8_t had_signal = 0;
 
-    enum token tok = ctx->entry->token;
+    enum token tok = ctx->entry.token;
     if (tok == TOKEN_MINUS || tok == TOKEN_PLUS) {
         MATCH_OR_ERROR(ctx, tok);
         had_signal = 1;
@@ -898,7 +898,7 @@ syntatic_exps(struct syntatic_ctx *ctx, struct codegen_value_info *exps_info)
 
     memcpy(exps_info, &t_info, sizeof(struct codegen_value_info));
 
-    tok = ctx->entry->token;
+    tok = ctx->entry.token;
     while (tok == TOKEN_PLUS || tok == TOKEN_MINUS || tok == TOKEN_LOGICAL_OR) {
         MATCH_OR_ERROR(ctx, tok);
 
@@ -922,7 +922,7 @@ syntatic_exps(struct syntatic_ctx *ctx, struct codegen_value_info *exps_info)
                 UNREACHABLE();
         }
 
-        tok = ctx->entry->token;
+        tok = ctx->entry.token;
     }
 
     return 0;
@@ -941,7 +941,7 @@ syntatic_exp(struct syntatic_ctx *ctx, struct codegen_value_info *exp_info)
 
     memcpy(exp_info, &exps_info, sizeof(struct codegen_value_info));
 
-    enum token operation_tok = ctx->entry->token;
+    enum token operation_tok = ctx->entry.token;
     uint8_t had_comparison = 0;
     switch (operation_tok) {
         case TOKEN_EQUAL:
@@ -951,7 +951,7 @@ syntatic_exp(struct syntatic_ctx *ctx, struct codegen_value_info *exp_info)
         case TOKEN_GREATER:
         case TOKEN_GREATER_EQUAL: {
             had_comparison = 1;
-            MATCH_OR_ERROR(ctx, ctx->entry->token);
+            MATCH_OR_ERROR(ctx, ctx->entry.token);
             if (syntatic_exps(ctx, &exps_info) < 0)
                 return -1;
             HANDLE_SEMANTIC_RESULT(
@@ -974,7 +974,7 @@ syntatic_write(struct syntatic_ctx *ctx)
     struct codegen_value_info exp_info;
     memset(&exp_info, 0, sizeof(exp_info));
 
-    MATCH_OR_ERROR(ctx, ctx->entry->token);
+    MATCH_OR_ERROR(ctx, ctx->entry.token);
 
     const uint8_t needs_new_line = ctx->last_entry.token == TOKEN_WRITELN;
 
@@ -983,16 +983,16 @@ syntatic_write(struct syntatic_ctx *ctx)
         return -1;
 
     codegen_write(&exp_info,
-                  ctx->entry->token == TOKEN_COMMA ? 0 : needs_new_line);
+                  ctx->entry.token == TOKEN_COMMA ? 0 : needs_new_line);
 
-    while (ctx->entry->token == TOKEN_COMMA) {
+    while (ctx->entry.token == TOKEN_COMMA) {
         MATCH_OR_ERROR(ctx, TOKEN_COMMA);
         if (syntatic_exp(ctx, &exp_info) < 0)
             return -1;
 
         codegen_reset_tmp();
         codegen_write(&exp_info,
-                      ctx->entry->token == TOKEN_COMMA ? 0 : needs_new_line);
+                      ctx->entry.token == TOKEN_COMMA ? 0 : needs_new_line);
     }
 
     MATCH_OR_ERROR(ctx, TOKEN_CLOSING_PAREN);
@@ -1016,7 +1016,7 @@ syntatic_attr(struct syntatic_ctx *ctx)
     struct codegen_value_info brackets_inner_expr;
     memset(&brackets_inner_expr, 0, sizeof(brackets_inner_expr));
 
-    if (ctx->entry->token == TOKEN_OPENING_SQUARE_BRACKET) {
+    if (ctx->entry.token == TOKEN_OPENING_SQUARE_BRACKET) {
         had_brackets = 1;
         MATCH_OR_ERROR(ctx, TOKEN_OPENING_SQUARE_BRACKET);
 
@@ -1066,7 +1066,7 @@ syntatic_paren_exp(struct syntatic_ctx *ctx,
 static int
 syntatic_is_first_of_command(struct syntatic_ctx *ctx)
 {
-    switch (ctx->entry->token) {
+    switch (ctx->entry.token) {
         case TOKEN_SEMICOLON:
         case TOKEN_IDENTIFIER:
         case TOKEN_WHILE:
@@ -1089,7 +1089,7 @@ syntatic_if(struct syntatic_ctx *ctx);
 static int
 syntatic_command(struct syntatic_ctx *ctx)
 {
-    enum token tok = ctx->entry->token;
+    enum token tok = ctx->entry.token;
 
     codegen_reset_tmp();
 
@@ -1144,7 +1144,7 @@ syntatic_while(struct syntatic_ctx *ctx)
             return -1;
         codegen_finish_loop();
         return 0;
-    } else if (ctx->entry->token == TOKEN_OPENING_CURLY_BRACKET) {
+    } else if (ctx->entry.token == TOKEN_OPENING_CURLY_BRACKET) {
         MATCH_OR_ERROR(ctx, TOKEN_OPENING_CURLY_BRACKET);
 
         while (syntatic_is_first_of_command(ctx)) {
@@ -1178,7 +1178,7 @@ syntatic_if(struct syntatic_ctx *ctx)
             return -1;
 
         uint8_t had_else = 0;
-        if (ctx->entry->token == TOKEN_ELSE) {
+        if (ctx->entry.token == TOKEN_ELSE) {
             had_else = 1;
 
             codegen_if_jmp();
@@ -1191,7 +1191,7 @@ syntatic_if(struct syntatic_ctx *ctx)
 
         codegen_finish_if(had_else);
         return 0;
-    } else if (ctx->entry->token == TOKEN_OPENING_CURLY_BRACKET) {
+    } else if (ctx->entry.token == TOKEN_OPENING_CURLY_BRACKET) {
         MATCH_OR_ERROR(ctx, TOKEN_OPENING_CURLY_BRACKET);
 
         while (syntatic_is_first_of_command(ctx)) {
@@ -1202,7 +1202,7 @@ syntatic_if(struct syntatic_ctx *ctx)
         MATCH_OR_ERROR(ctx, TOKEN_CLOSING_CURLY_BRACKET);
 
         uint8_t had_else = 0;
-        if (ctx->entry->token == TOKEN_ELSE) {
+        if (ctx->entry.token == TOKEN_ELSE) {
             had_else = 1;
 
             codegen_if_jmp();
@@ -1233,7 +1233,7 @@ syntatic_is_first_of_s(struct syntatic_ctx *ctx)
     if (syntatic_is_first_of_command(ctx))
         return 1;
 
-    switch (ctx->entry->token) {
+    switch (ctx->entry.token) {
         case TOKEN_INT:
         case TOKEN_FLOAT:
         case TOKEN_STRING:
@@ -1247,13 +1247,12 @@ syntatic_is_first_of_s(struct syntatic_ctx *ctx)
 }
 
 void
-syntatic_init(struct syntatic_ctx *ctx,
-              struct lexer *lexer,
-              struct lexical_entry *entry)
+syntatic_init(struct syntatic_ctx *ctx, struct lexer *lexer)
 {
     ctx->lexer = lexer;
-    ctx->entry = entry;
     ctx->found_last_token = 0;
+    memset(&ctx->last_entry, 0, sizeof(ctx->last_entry));
+    memset(&ctx->entry, 0, sizeof(ctx->entry));
 }
 
 int
@@ -1265,7 +1264,7 @@ syntatic_start(struct syntatic_ctx *ctx)
                 return -1;
         } else {
             // Handle DECL_VAR and DECL_CONST.
-            enum token tok = ctx->entry->token;
+            enum token tok = ctx->entry.token;
             MATCH_OR_ERROR(ctx, tok);
 
             switch (tok) {

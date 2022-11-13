@@ -45,7 +45,9 @@ int
 codegen_init(void);
 
 int
-codegen_dump(const char *pathname, uint8_t delete_unoptimized);
+codegen_dump(const char *pathname,
+             uint8_t keep_unoptimized,
+             uint8_t assemble_and_link);
 
 void
 codegen_destroy(void);

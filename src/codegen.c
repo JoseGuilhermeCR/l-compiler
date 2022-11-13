@@ -358,7 +358,9 @@ perform_peephole(FILE *file, FILE *dump_file)
 }
 
 int
-codegen_dump(const char *pathname, uint8_t delete_unoptimized)
+codegen_dump(const char *pathname,
+             uint8_t keep_unoptimized,
+             uint8_t assemble_and_link)
 {
     if (!tmp_file)
         return -1;
@@ -398,7 +400,10 @@ codegen_dump(const char *pathname, uint8_t delete_unoptimized)
                                         unnecessary_sections_removed_file);
     perform_peephole(unnecessary_sections_removed_file, peephole_file);
 
-    FILE *output = fopen(pathname, "w+");
+    char output_filename[256];
+    snprintf(output_filename, sizeof(output_filename), "%s.asm", pathname);
+
+    FILE *output = fopen(output_filename, "w+");
     if (!output) {
         err = -1;
         goto output_file_err;
@@ -415,6 +420,44 @@ codegen_dump(const char *pathname, uint8_t delete_unoptimized)
     fclose(output);
     output = NULL;
 
+    fprintf(ERR_STREAM, "Assembly output in: %s.\n", output_filename);
+
+    if (keep_unoptimized) {
+        fprintf(ERR_STREAM,
+                "Assembly without peephole in: %s.\n",
+                remove_section_filename);
+    }
+
+    if (assemble_and_link) {
+        char buffer[1024];
+
+        snprintf(buffer,
+                 sizeof(buffer),
+                 "nasm -f elf64 %s -o %s.o",
+                 output_filename,
+                 output_filename);
+        fprintf(ERR_STREAM, "Running: \"%s\".\n", buffer);
+
+        if (system(buffer) == 0) {
+            snprintf(buffer,
+                     sizeof(buffer),
+                     "ld %s.o -o %s.out",
+                     output_filename,
+                     output_filename);
+            fprintf(ERR_STREAM, "Running: \"%s\".\n", buffer);
+
+            if (system(buffer) == 0)
+                fprintf(ERR_STREAM,
+                        "Successfully assembled and linked. Executable in: "
+                        "%s.out.\n",
+                        output_filename);
+        }
+
+        // Remove the assembled but not linked file.
+        snprintf(buffer, sizeof(buffer), "%s.o", output_filename);
+        remove(buffer);
+    }
+
 output_file_err:
     fclose(peephole_file);
     peephole_file = NULL;
@@ -423,7 +466,7 @@ output_file_err:
 peephole_file_err:
     fclose(unnecessary_sections_removed_file);
     unnecessary_sections_removed_file = NULL;
-    if (err || delete_unoptimized)
+    if (err || !keep_unoptimized)
         remove(remove_section_filename);
 
     return err;
