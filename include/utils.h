@@ -32,10 +32,18 @@
 #include <assert.h>
 #include <stdint.h>
 
+#if defined(NDEBUG)
+
+#define UNREACHABLE() __builtin_unreachable()
+
+#else
+
 #define UNREACHABLE()                                                          \
     do {                                                                       \
         assert(0 && "Should never be reached.");                               \
     } while (0)
+
+#endif
 
 uint8_t
 is_case_insensitive_equal(const char *lhs, const char *rhs);

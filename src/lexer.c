@@ -77,8 +77,8 @@ lexer_get_next_token(struct lexer *lexer, struct lexical_entry *entry)
 
     lexer->state = LEXER_STATE_INITIAL;
 
-    char last;
-    char c;
+    char last = '\0';
+    char c = '\0';
 
     while (lexer->cursor != lexer->file->size) {
 

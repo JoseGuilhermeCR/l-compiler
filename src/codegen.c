@@ -195,11 +195,12 @@ remove_unnecessary_section_commands(FILE *file, FILE *dump_file)
 {
     enum section
     {
+        NONE,
         TEXT,
         BSS,
         RODATA,
         DATA,
-    } section;
+    } section = NONE;
 
     fseek(file, 0, SEEK_SET);
 

@@ -200,22 +200,26 @@ symbol_table_insert(struct symbol_table *table,
 void
 symbol_table_populate_with_keywords(struct symbol_table *table)
 {
-    assert(symbol_table_insert(table, "const", TOKEN_CONST));
-    assert(symbol_table_insert(table, "int", TOKEN_INT));
-    assert(symbol_table_insert(table, "char", TOKEN_CHAR));
-    assert(symbol_table_insert(table, "while", TOKEN_WHILE));
-    assert(symbol_table_insert(table, "if", TOKEN_IF));
-    assert(symbol_table_insert(table, "float", TOKEN_FLOAT));
-    assert(symbol_table_insert(table, "else", TOKEN_ELSE));
-    assert(symbol_table_insert(table, "readln", TOKEN_READLN));
-    assert(symbol_table_insert(table, "div", TOKEN_DIV));
-    assert(symbol_table_insert(table, "string", TOKEN_STRING));
-    assert(symbol_table_insert(table, "write", TOKEN_WRITE));
-    assert(symbol_table_insert(table, "writeln", TOKEN_WRITELN));
-    assert(symbol_table_insert(table, "mod", TOKEN_MOD));
-    assert(symbol_table_insert(table, "boolean", TOKEN_BOOLEAN));
-    assert(symbol_table_insert(table, "true", TOKEN_CONSTANT));
-    assert(symbol_table_insert(table, "false", TOKEN_CONSTANT));
+    int err = 0;
+
+    err += symbol_table_insert(table, "const", TOKEN_CONST) == NULL;
+    err += symbol_table_insert(table, "int", TOKEN_INT) == NULL;
+    err += symbol_table_insert(table, "char", TOKEN_CHAR) == NULL;
+    err += symbol_table_insert(table, "while", TOKEN_WHILE) == NULL;
+    err += symbol_table_insert(table, "if", TOKEN_IF) == NULL;
+    err += symbol_table_insert(table, "float", TOKEN_FLOAT) == NULL;
+    err += symbol_table_insert(table, "else", TOKEN_ELSE) == NULL;
+    err += symbol_table_insert(table, "readln", TOKEN_READLN) == NULL;
+    err += symbol_table_insert(table, "div", TOKEN_DIV) == NULL;
+    err += symbol_table_insert(table, "string", TOKEN_STRING) == NULL;
+    err += symbol_table_insert(table, "write", TOKEN_WRITE) == NULL;
+    err += symbol_table_insert(table, "writeln", TOKEN_WRITELN) == NULL;
+    err += symbol_table_insert(table, "mod", TOKEN_MOD) == NULL;
+    err += symbol_table_insert(table, "boolean", TOKEN_BOOLEAN) == NULL;
+    err += symbol_table_insert(table, "true", TOKEN_CONSTANT) == NULL;
+    err += symbol_table_insert(table, "false", TOKEN_CONSTANT) == NULL;
+
+    assert(!err && "symbol_table_insert failed.");
 }
 
 void

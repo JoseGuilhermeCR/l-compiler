@@ -64,7 +64,8 @@ main(int argc, const char *argv[])
 {
     if (argc < 2) {
         fprintf(ERR_STREAM,
-                "Usage: %s <program_file> [--keep-unoptimized] [--assemble-and-link]\n",
+                "Usage: %s <program_file> [--keep-unoptimized] "
+                "[--assemble-and-link]\n",
                 argv[0]);
         return -1;
     }
@@ -118,7 +119,8 @@ main(int argc, const char *argv[])
 
             fprintf(ERR_STREAM, "Compiled lines: %u\n", lexer.line);
 
-            if (codegen_dump(filename, keep_unoptimized, assemble_and_link) < 0) {
+            if (codegen_dump(filename, keep_unoptimized, assemble_and_link) <
+                0) {
                 fputs("codegen_dump failed.\n", ERR_STREAM);
                 free(filename);
             }
