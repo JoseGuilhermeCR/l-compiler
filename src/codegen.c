@@ -1572,6 +1572,7 @@ write_float(const struct codegen_value_info *exp)
             "\tsubss xmm0, xmm1\n"
             // Convert integer
             "\tcvtss2si eax, xmm1\n"
+            "\tmov ebx, 10\n"
             "%s:\n"
             "\tadd ecx, 1\n"
             "\tcdq\n"
