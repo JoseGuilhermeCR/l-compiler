@@ -27,7 +27,7 @@ target_include_directories(l-compiler PRIVATE "include/")
 
 target_compile_definitions(l-compiler PRIVATE
 	"MAX_FILE_SIZE=(32U*1024U)"
-	"MAX_LEXEME_SIZE=(32U)"
+	"MAX_LEXEME_SIZE=(512U)"
 	"ERR_STREAM=stderr"
 )
 
