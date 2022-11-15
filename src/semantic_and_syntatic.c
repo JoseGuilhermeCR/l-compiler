@@ -457,7 +457,7 @@ semantic_apply_sr1(struct symbol *symbol, enum token tok)
 static void
 syntatic_report_unexpected_token_error(struct syntatic_ctx *ctx)
 {
-    fprintf(ERR_STREAM, "%i\nErro: ", ctx->entry.line);
+    fprintf(ERR_STREAM, "%i\nErro: ", ctx->lexer->line);
     if (ctx->entry.lexeme.size) {
         fprintf(
             ERR_STREAM, "Token não esperado [%s].\n", ctx->entry.lexeme.buffer);
