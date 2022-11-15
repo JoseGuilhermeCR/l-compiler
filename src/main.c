@@ -1,31 +1,6 @@
-/*
- * This is free and unencumbered software released into the public domain.
- * Anyone is free to copy, modify, publish, use, compile, sell, or
- * distribute this software, either in source code form or as a compiled
- * binary, for any purpose, commercial or non-commercial, and by any
- * means.
- *
- * In jurisdictions that recognize copyright laws, the author or authors
- * of this software dedicate any and all copyright interest in the
- * software to the public domain. We make this dedication for the benefit
- * of the public at large and to the detriment of our heirs and
- * successors. We intend this dedication to be an overt act of
- * relinquishment in perpetuity of all present and future rights to this
- * software under copyright law.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
- * IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
- * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
- * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
- *
- * For more information, please refer to <http://unlicense.org/>
- *
- * Jose Guilherme de Castro Rodrigues - 2022 - 651201
- */
-
+/* Compiladores - Ciência da Computação - Coração Eucarístico - 2022/2
+ * José Guilherme de Castro Rodrigues - 651201
+ * */
 #include "codegen.h"
 #include "file.h"
 #include "lexer.h"
@@ -37,6 +12,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+/*
+ * Extracts a filename from pathname. The returned buffer must be freed.
+ * Examples:
+ *  /home/user/file.txt -> file.txt
+ * ./file.txt -> file.txt
+ *   file.txt -> file.txt
+ * */
 static char *
 extract_filename(const char *pathname)
 {
@@ -70,6 +52,11 @@ main(int argc, const char *argv[])
         return -1;
     }
 
+    // Checks for optional parameters:
+    // --keep-unoptimized will leave a copy of the generated assembly that
+    // didn't pass through the peephole.
+    // --assemble-and-link will use nasm and ld to generate an executable for
+    // the program.
     uint8_t keep_unoptimized = 0;
     uint8_t assemble_and_link = 0;
     for (int i = 2; i < argc; ++i) {
@@ -81,6 +68,7 @@ main(int argc, const char *argv[])
 
     int status = 0;
 
+    // Read the l's program source file.
     struct file file;
     status = read_file(&file, argv[1]);
     if (status < 0) {
@@ -88,6 +76,7 @@ main(int argc, const char *argv[])
         return -1;
     }
 
+    // Initialize compiler's main structures.
     struct symbol_table table;
     status = symbol_table_create(&table, 64);
     if (status < 0) {
@@ -112,9 +101,12 @@ main(int argc, const char *argv[])
         goto lexer_err;
     }
 
+    // If we've found the first token, kickstart the syntatic analyzer.
+    // All the rest will be done inside it.
     if (result == LEXER_RESULT_FOUND) {
         status = syntatic_start(&syntatic_ctx);
         if (status == 0) {
+            // Compilation occurred successfully!
             char *filename = extract_filename(argv[1]);
 
             fprintf(ERR_STREAM, "Compiled lines: %u\n", lexer.line);

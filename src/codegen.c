@@ -1,31 +1,6 @@
-/*
- * This is free and unencumbered software released into the public domain.
- * Anyone is free to copy, modify, publish, use, compile, sell, or
- * distribute this software, either in source code form or as a compiled
- * binary, for any purpose, commercial or non-commercial, and by any
- * means.
- *
- * In jurisdictions that recognize copyright laws, the author or authors
- * of this software dedicate any and all copyright interest in the
- * software to the public domain. We make this dedication for the benefit
- * of the public at large and to the detriment of our heirs and
- * successors. We intend this dedication to be an overt act of
- * relinquishment in perpetuity of all present and future rights to this
- * software under copyright law.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
- * IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
- * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
- * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
- *
- * For more information, please refer to <http://unlicense.org/>
- *
- * Jose Guilherme de Castro Rodrigues - 2022 - 651201
- */
-
+/* Compiladores - Ciência da Computação - Coração Eucarístico - 2022/2
+ * José Guilherme de Castro Rodrigues - 651201
+ * */
 #include "codegen.h"
 #include "symbol_table.h"
 #include "token.h"
@@ -262,10 +237,11 @@ perform_peephole(FILE *file, FILE *dump_file)
     uint32_t avoided_moves = 0;
 
     while (fgets(line, sizeof(line), file)) {
-check_again:
+    check_again:
         switch (state) {
             case WAITING_FIRST_MOV:
-                if (strncmp(line, "\tmov", 4) != 0 && strncmp(line, "\tmovss", 6) != 0) {
+                if (strncmp(line, "\tmov", 4) != 0 &&
+                    strncmp(line, "\tmovss", 6) != 0) {
                     fputs(line, dump_file);
                 } else {
                     fputs(line, dump_file);
@@ -293,7 +269,8 @@ check_again:
                 }
                 break;
             case WAITING_SECOND_MOV:
-                if (strncmp(line, "\tmov", 4) == 0 || strncmp(line, "\tmovss", 6) == 0) {
+                if (strncmp(line, "\tmov", 4) == 0 ||
+                    strncmp(line, "\tmovss", 6) == 0) {
                     state = WAITING_FIRST_MOV;
 
                     const uint8_t is_load = strstr(line, ", [") != NULL;
@@ -323,8 +300,10 @@ check_again:
                             fputs(line, dump_file);
                         }
                     } else {
-                        // Ok, this is not a load and therefore we can't remove it... but is it a store that's followed
-                        // by a load? We can check that by checking this line again in the first state!
+                        // Ok, this is not a load and therefore we can't remove
+                        // it... but is it a store that's followed by a load? We
+                        // can check that by checking this line again in the
+                        // first state!
                         goto check_again;
                     }
                 } else {
