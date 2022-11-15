@@ -262,9 +262,10 @@ perform_peephole(FILE *file, FILE *dump_file)
     uint32_t avoided_moves = 0;
 
     while (fgets(line, sizeof(line), file)) {
+check_again:
         switch (state) {
             case WAITING_FIRST_MOV:
-                if (strncmp(line, "\tmov", 4) != 0) {
+                if (strncmp(line, "\tmov", 4) != 0 && strncmp(line, "\tmovss", 6) != 0) {
                     fputs(line, dump_file);
                 } else {
                     fputs(line, dump_file);
@@ -292,7 +293,9 @@ perform_peephole(FILE *file, FILE *dump_file)
                 }
                 break;
             case WAITING_SECOND_MOV:
-                if (strncmp(line, "\tmov", 4) == 0) {
+                if (strncmp(line, "\tmov", 4) == 0 || strncmp(line, "\tmovss", 6) == 0) {
+                    state = WAITING_FIRST_MOV;
+
                     const uint8_t is_load = strstr(line, ", [") != NULL;
                     if (is_load) {
                         strncpy(tmp_line, line, sizeof(line));
@@ -320,7 +323,9 @@ perform_peephole(FILE *file, FILE *dump_file)
                             fputs(line, dump_file);
                         }
                     } else {
-                        fputs(line, dump_file);
+                        // Ok, this is not a load and therefore we can't remove it... but is it a store that's followed
+                        // by a load? We can check that by checking this line again in the first state!
+                        goto check_again;
                     }
                 } else {
                     uint8_t instruction_line = 1;
