@@ -403,18 +403,18 @@ lexer_print_error(const struct lexer *lexer)
 {
     assert(lexer->error != LEXER_ERROR_NONE);
 
-    fprintf(ERR_STREAM, "%i\nErro: ", lexer->line);
+    fprintf(ERR_STREAM, "%i\nError: ", lexer->line);
     switch (lexer->error) {
         case LEXER_ERROR_UNEXPECTED_EOF:
-            fputs("Fim de arquivo não esperado.\n", ERR_STREAM);
+            fputs("Unexpected End Of File.\n", ERR_STREAM);
             break;
         case LEXER_ERROR_INVALID_LEXEME:
             fprintf(ERR_STREAM,
-                    "Lexema não identificado [%s].\n",
+                    "Unidentified lexeme [%s].\n",
                     lexer->lexeme.buffer);
             break;
         case LEXER_ERROR_INVALID_CHARACTER:
-            fputs("Caractere inválido.\n", ERR_STREAM);
+            fputs("Invalid character.\n", ERR_STREAM);
             break;
         default:
             UNREACHABLE();

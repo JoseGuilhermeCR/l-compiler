@@ -25,24 +25,24 @@ enum semantic_result
 static void
 semantic_print_error(struct syntatic_ctx *ctx, enum semantic_result sr)
 {
-    fprintf(ERR_STREAM, "%i\nErro: ", ctx->last_entry.line);
+    fprintf(ERR_STREAM, "%i\nError: ", ctx->last_entry.line);
     switch (sr) {
         case SEMANTIC_ERROR_CLASS_MISMATCH:
             fprintf(ERR_STREAM,
-                    "Classes incompatíveis [%s].\n",
+                    "Incompatible classes [%s].\n",
                     ctx->last_entry.lexeme.buffer);
             break;
         case SEMANTIC_ERROR_TYPE_MISMATCH:
-            fprintf(ERR_STREAM, "Tipos incompatíveis.\n");
+            fprintf(ERR_STREAM, "Incompatible types.\n");
             break;
         case SEMANTIC_ERROR_ID_ALREADY_DECLARED:
             fprintf(ERR_STREAM,
-                    "Identificador já declarado [%s].\n",
+                    "Identifier has already been declared [%s].\n",
                     ctx->last_entry.lexeme.buffer);
             break;
         case SEMANTIC_ERROR_ID_NOT_DECLARED:
             fprintf(ERR_STREAM,
-                    "Identificador não declarado [%s].\n",
+                    "Identifier has not been declared [%s].\n",
                     ctx->last_entry.lexeme.buffer);
             break;
         case SEMANTIC_OK:
@@ -457,13 +457,13 @@ semantic_apply_sr1(struct symbol *symbol, enum token tok)
 static void
 syntatic_report_unexpected_token_error(struct syntatic_ctx *ctx)
 {
-    fprintf(ERR_STREAM, "%i\nErro: ", ctx->lexer->line);
+    fprintf(ERR_STREAM, "%i\nError: ", ctx->lexer->line);
     if (ctx->entry.lexeme.size) {
         fprintf(
-            ERR_STREAM, "Token não esperado [%s].\n", ctx->entry.lexeme.buffer);
+            ERR_STREAM, "Unexpected token [%s].\n", ctx->entry.lexeme.buffer);
     } else {
         fprintf(ERR_STREAM,
-                "Token não esperado [%s].\n",
+                "Unexpected token [%s].\n",
                 get_lexeme_from_token(ctx->entry.token));
     }
 }
@@ -472,7 +472,7 @@ static void
 syntatic_report_unexpected_eof_error(struct syntatic_ctx *ctx)
 {
     fprintf(ERR_STREAM, "%i\n", ctx->entry.line);
-    fputs("Erro: Fim de arquivo não esperado.\n", ERR_STREAM);
+    fputs("Error: Unexpected End Of File.\n", ERR_STREAM);
 }
 
 static enum syntatic_result
