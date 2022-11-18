@@ -1,0 +1,63 @@
+S -> {DECL_VAR | DECL_CONST | COMMAND}*
+
+DECL_VAR   -> (int | float | string | boolean | char) id __4__ __1__ [ := [- __2__] CONST __3__] {, id __4__ __1__ [ := [- __2__] CONST __3__] }*;
+DECL_CONST -> const id __4__ = [-] CONST __5__ __2__;
+
+COMMAND -> ATTR | REPEAT | TEST | READ | WRITE | ;
+
+ATTR -> id __8__ __10__ [ __6__ BRACKET_EXP ] := EXP __9__;
+
+REPEAT -> while PAREN_EXP (COMMAND | "{" {COMMAND}* "}")
+TEST   -> if PAREN_EXP (COMMAND [else COMMAND] | "{" {COMMAND}* "}" [else "{" {COMMAND}* "}"])
+
+READ   -> readln"("id __8__ __10__")";
+WRITE  -> (write | writeln) "(" EXP {, EXP}* ")";
+
+EXP    -> EXPS __20__ [ ( = | != | < | <= | > | >= ) EXPS __26__ ]
+EXPS   -> [ + | - ] T __21__ __22__ { (+ | - | "||") T __25__ }*
+T      -> F __23__ { ( * | && | mod | div | / ) F __24__ }*
+F      -> !F __14__ | "(" EXP __15__ ")" | int "(" EXP __12__ ")" __16__ | float "(" EXP __13__ ")" __17__ | CONST __18__ | id __8__ [ __6__ BRACKET_EXP ] __19__
+
+PAREN_EXP   -> "(" EXP __11__ ")"
+BRACKET_EXP -> "[" EXP __7__ "]"
+
+; --- Ações Semânticas (Verificar Unicidade / Classe / Tipo) ---
+
+__1__ => { id.posição->tipo = (TODO) int | float | string | boolean | char; id.posição->classe = variável }
+__2__ => Se id.posição->tipo = string | boolean | char Então ERRO (tipos incompatíveis)
+__3__ => Se id.posição->tipo != CONST.tipo Então ERRO (tipos incompatíveis)
+__4__ => Se id.nao_adicionado_a_tabela Então ERRO (identificador já declarado)
+__5__ => { id.posição->tipo = CONST.tipo; id.posição->classe = constante }
+__6__ => Se id.posição->tipo != string Então ERRO (tipos incompatíveis)
+__7__ => Se EXP.tipo != int Então ERRO (tipos incompatíveis).
+__8__ => Se id.nao_existe_na_tabela Então ERRO (identificador não declarado)
+__9__ => Se id.posicão->tipo != EXP.tipo Então ERRO (tipos incompatíveis)
+__10__ => Se id.posição->classe != variável Então ERRO (classe incompatível)
+__11__ => Se EXP.tipo != boolean Então ERRO (tipos incompatíveis)
+__12__ => Se EXP.tipo != float Então ERRO (tipos incompatíveis)
+__13__ => Se EXP.tipo != int Então ERRO (tipos incompatíveis)
+__14__ => Se F.tipo != boolean Então ERRO (tipos incompatíveis)
+__15__ => F.tipo = EXP.tipo
+__16__ => F.tipo = int 
+__17__ => F.tipo = float
+__18__ => F.tipo = CONST.tipo
+__19__ => { Se houve acesso a string, F.tipo = char, se não, F.tipo = id.tipo }
+__20__ => EXP.tipo = EXPS.tipo
+__21__ => Se T.tipo != FLOAT && T.tipo != INTEGER e SINAL_APLICADO, então Erro.
+__22__ => EXPS.tipo = T.tipo
+__23__ => T.tipo = F.tipo
+__24__ => {
+	Se operação &&, ambos operandos devem ser do tipo boolean.
+	Se operação * ou /, ambos operandos devem ser aritméticos e 
+		se qualquer um deles for real, o resultado é real.
+	Se operação mod ou div, ambos operandos devem ser inteiros.
+}
+__25__ => {
+	Se operação + ou -, ambos operandos deve ser aritméticos e se qualquer
+		um deles for real, o resultado é real.
+	Se operaçãp for ||, ambos operandos devem ser booleanos.
+}
+__26__ => {
+	Strings só podem ser comparadas com == ou !=.
+	Todo o resto ou precisa de tipos iguais ou o tipo é aritmético.
+}
