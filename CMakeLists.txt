@@ -11,24 +11,17 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS True)
 project(l-compiler LANGUAGES C)
 
 add_executable(l-compiler
-	src/main.c
-	src/symbol_table.c
-	src/semantic_and_syntatic.c
-	src/lexer.c
-	src/file.c
-    src/codegen.c
-    src/utils.c
-	include/symbol_table.h
-	include/semantic_and_syntatic.h
-    include/lexer.h
-	include/file.h
-	include/token.h
-	include/utils.h
-    include/codegen.h
+    main.c
+    symbol_table.c
+    semantic_and_syntatic.c
+    lexer.c
+    file.c
+    codegen.c
+    utils.c
 )
 
 target_include_directories(l-compiler PRIVATE
-    include
+    ${CMAKE_CURRENT_SOURCE_DIRECTORY}
 )
 
 target_compile_definitions(l-compiler PRIVATE
